@@ -150,6 +150,7 @@ class EmojiCDNSource(DiscordEmojiSourceMixin):
     def __init__(self, style: EmojiStyle = EmojiStyle.APPLE, cache_dir: Path | None = None) -> None:
         super().__init__(cache_dir=cache_dir)
         self.style = style.value
+        (self.cache_dir / self.style).mkdir(parents=True, exist_ok=True)
 
     async def get_emoji(self, emoji: str) -> BytesIO | None:
         file_path = self.cache_dir / self.style / f"{emoji}.png"
@@ -157,7 +158,7 @@ class EmojiCDNSource(DiscordEmojiSourceMixin):
             async with aopen(file_path, "rb") as f:
                 return BytesIO(await f.read())
 
-        url = f"https://emojicdn.elk.sh/emoji?style={self.style}"
+        url = f"https://emojicdn.elk.sh/{emoji}?style={self.style}"
 
         try:
             bytes = await self.download(url)
