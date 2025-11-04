@@ -128,6 +128,9 @@ class LocalEmojiSource:
 class DiscordEmojiSourceMixin(HTTPBasedSource):
     """A mixin that adds Discord emoji functionality to another source."""
 
+    def __post_init__(self):
+        (self.cache_dir / "discord").mkdir(parents=True, exist_ok=True)
+
     async def get_discord_emoji(self, id: int) -> BytesIO | None:
         file_name = f"{id}.png"
         file_path = self.cache_dir / "discord" / file_name
@@ -149,8 +152,12 @@ class DiscordEmojiSourceMixin(HTTPBasedSource):
 class EmojiCDNSource(DiscordEmojiSourceMixin):
     """A base source that fetches emojis from https://emojicdn.elk.sh/."""
 
-    STYLE: ClassVar[EmojiStyle] = EmojiStyle.MICROSOFT
+    STYLE: ClassVar[EmojiStyle] = EmojiStyle.MESSENGER
     BASE_EMOJI_CDN_URL: ClassVar[str] = "https://emojicdn.elk.sh/{}?style=" + STYLE.value
+
+    def __post_init__(self):
+        super().__post_init__()
+        (self.cache_dir / self.STYLE.value).mkdir(parents=True, exist_ok=True)
 
     async def get_emoji(self, emoji: str) -> BytesIO | None:
         file_path = self.cache_dir / self.STYLE.value / f"{emoji}.png"
