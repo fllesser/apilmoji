@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from io import BytesIO
 from pathlib import Path
-from typing import Any, ClassVar
 from urllib.parse import quote_plus
 
 from aiofiles import open as aopen
@@ -63,12 +62,10 @@ class BaseSource(ABC):
 class HTTPBasedSource(BaseSource):
     """Represents an HTTP-based source."""
 
-    REQUEST_KWARGS: ClassVar[dict[str, Any]] = {"headers": {"User-Agent": "Mozilla/5.0"}}
-
     def __init__(self, cache_dir: Path | None = None) -> None:
         self.cache_dir: Path = cache_dir or (Path.home() / ".cache" / "pilmoji")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.client = AsyncClient(**self.REQUEST_KWARGS)
+        self.client = AsyncClient(headers={"User-Agent": "Mozilla/5.0"})
 
     async def download(self, url: str) -> bytes:
         response = await self.client.get(url)
@@ -88,15 +85,13 @@ class EmojiStyle(str, Enum):
     OPENMOJI = "openmoji"
     EMOJIDEX = "emojidex"
     MOZILLA = "mozilla"
+    TWEMOJI = "twemoji"
 
     def __str__(self) -> str:
         return self.value
 
 
 class LocalEmojiSource:
-    BASE_DISCORD_EMOJI_URL: ClassVar[str] = "https://cdn.discordapp.com/emojis/"
-    BASE_EMOJI_CDN_URL: ClassVar[str] = "https://emojicdn.elk.sh/"
-
     def __init__(self, style: EmojiStyle, cache_dir: Path | None = None) -> None:
         self.style = style.value
         self.cache_dir: Path = cache_dir or Path.home() / ".cache" / "pilmoji"
@@ -108,7 +103,7 @@ class LocalEmojiSource:
             file_path = self.cache_dir / self.style / f"{emj}.png"
             if file_path.exists():
                 return
-            url = self.BASE_EMOJI_CDN_URL + quote_plus(emj) + "?style=" + quote_plus(self.style)
+            url = f"https://emojicdn.elk.sh/{quote_plus(emj)}?style={self.style}"
             response = await client.get(url)
             response.raise_for_status()
             async with aopen(file_path, "wb") as f:
@@ -152,20 +147,17 @@ class DiscordEmojiSourceMixin(HTTPBasedSource):
 class EmojiCDNSource(DiscordEmojiSourceMixin):
     """A base source that fetches emojis from https://emojicdn.elk.sh/."""
 
-    STYLE: ClassVar[EmojiStyle] = EmojiStyle.MESSENGER
-    BASE_EMOJI_CDN_URL: ClassVar[str] = "https://emojicdn.elk.sh/{}?style=" + STYLE.value
-
-    def __post_init__(self):
-        super().__post_init__()
-        (self.cache_dir / self.STYLE.value).mkdir(parents=True, exist_ok=True)
+    def __init__(self, style: EmojiStyle = EmojiStyle.APPLE, cache_dir: Path | None = None) -> None:
+        super().__init__(cache_dir=cache_dir)
+        self.style = style.value
 
     async def get_emoji(self, emoji: str) -> BytesIO | None:
-        file_path = self.cache_dir / self.STYLE.value / f"{emoji}.png"
+        file_path = self.cache_dir / self.style / f"{emoji}.png"
         if file_path.exists():
             async with aopen(file_path, "rb") as f:
                 return BytesIO(await f.read())
 
-        url = self.BASE_EMOJI_CDN_URL.format(quote_plus(emoji))
+        url = f"https://emojicdn.elk.sh/emoji?style={self.style}"
 
         try:
             bytes = await self.download(url)
