@@ -23,10 +23,10 @@ _DISCORD_EMOJI_REGEX = "<a?:[a-zA-Z0-9_]{1,32}:[0-9]{17,22}>"
 
 EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(f"({_UNICODE_EMOJI_REGEX}|{_DISCORD_EMOJI_REGEX})")
 
-__all__ = ("EMOJI_REGEX", "Node", "NodeType", "_get_font_size", "getsize", "to_nodes")
+__all__ = ("EMOJI_REGEX", "Node", "NodeType", "get_font_size", "getsize", "to_nodes")
 
 
-def _get_font_size(font: FontT) -> float:
+def get_font_size(font: FontT) -> float:
     """Get the size of a font, handling both FreeTypeFont and TransposedFont."""
     if isinstance(font, ImageFont.TransposedFont):
         assert not isinstance(font.font, ImageFont.ImageFont), "font.font should not be an ImageFont"
@@ -147,13 +147,13 @@ def getsize(
             content = node.content
 
             if node.type is not NodeType.text:
-                width = int(emoji_scale_factor * _get_font_size(font))
+                width = int(emoji_scale_factor * get_font_size(font))
             else:
                 width = int(font.getlength(content))
 
             this_x += width
 
-        y += spacing + _get_font_size(font)
+        y += spacing + get_font_size(font)
 
         if this_x > x:
             x = this_x

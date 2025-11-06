@@ -35,6 +35,10 @@ async def test_get_emoji_from_cdn():
         for emoji in emoji_list:
             image = await source.get_emoji(emoji)
             assert image is not None
+        # test cache
+        for emoji in emoji_list:
+            image = await source.get_emoji(emoji)
+            assert image is not None
 
 
 @pytest.mark.asyncio
@@ -43,6 +47,9 @@ async def test_get_discord_emoji_from_cdn():
 
     discord_emoji_id = 596576798351949847
     async with EmojiCDNSource(cache_dir=cache_dir) as source:
+        image = await source.get_discord_emoji(discord_emoji_id)
+        assert image is not None
+        # test cache
         image = await source.get_discord_emoji(discord_emoji_id)
         assert image is not None
 

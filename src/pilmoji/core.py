@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, SupportsInt
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .helpers import NodeType, _get_font_size, getsize, to_nodes
+from .helpers import NodeType, get_font_size, to_nodes
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
 
 if TYPE_CHECKING:
@@ -111,35 +111,6 @@ class Pilmoji:
 
             stream.seek(0)
             return stream
-
-    def getsize(
-        self,
-        text: str,
-        font: FontT,
-        *,
-        spacing: int = 4,
-        emoji_scale_factor: float | None = None,
-    ) -> tuple[int, float]:
-        """Return the width and height of the text when rendered.
-        This method supports multiline text.
-
-        Parameters
-        ----------
-        text: str
-            The text to use.
-        font
-            The font of the text.
-        spacing: int
-            The spacing between lines, in pixels.
-            Defaults to `4`.
-        emoji_scalee_factor: float
-            The rescaling factor for emojis.
-            Defaults to the factor given in the class constructor, or `1`.
-        """
-        if emoji_scale_factor is None:
-            emoji_scale_factor = self._default_emoji_scale_factor
-
-        return getsize(text, font, spacing=spacing, emoji_scale_factor=emoji_scale_factor)
 
     async def text(
         self,
@@ -280,7 +251,7 @@ class Pilmoji:
                 with Image.open(stream).convert("RGBA") as asset:
                     # font is guaranteed to be FontT at this point (not None)
                     assert font is not None, "Font should not be None at this point"
-                    width = round(emoji_scale_factor * _get_font_size(font))
+                    width = round(emoji_scale_factor * get_font_size(font))
                     ox, oy = emoji_position_offset
                     size = round(width + ox + (node_spacing * 2))
                     # for every emoji we calculate the space needed to display it in the current text
@@ -390,7 +361,7 @@ class Pilmoji:
                     with Image.open(streams[node_id][line_id]).convert("RGBA") as asset:
                         # font is guaranteed to be FontT at this point (not None)
                         assert font is not None, "Font should not be None at this point"
-                        width = round(emoji_scale_factor * _get_font_size(font))
+                        width = round(emoji_scale_factor * get_font_size(font))
                         size = width, round(math.ceil(asset.height / asset.width * width))
                         asset = asset.resize(size, Image.Resampling.LANCZOS)
                         ox, oy = emoji_position_offset
