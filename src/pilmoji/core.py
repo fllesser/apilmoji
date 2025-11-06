@@ -84,6 +84,13 @@ class Pilmoji:
 
         self._closed = True
 
+    async def aclose(self) -> None:
+        if not self._closed:
+            self.close()
+
+        if isinstance(self.source, HTTPBasedSource):
+            await self.source.aclose()
+
     async def _get_emoji(self, emoji: str) -> BytesIO | None:
         if self._cache and emoji in self._emoji_cache:
             entry = self._emoji_cache[emoji]
@@ -377,9 +384,7 @@ class Pilmoji:
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        self.close()
-        if isinstance(self.source, HTTPBasedSource):
-            await self.source.__aexit__(exc_type, exc_value, traceback)
+        await self.aclose()
 
     def __repr__(self) -> str:
         return f"<Pilmoji source={self.source} cache={self._cache}>"

@@ -56,6 +56,12 @@ class HTTPBasedSource(BaseSource):
     def __init__(self, cache_dir: Path | None = None):
         self.cache_dir: Path = cache_dir or (Path.home() / ".cache" / "pilmoji")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._client: AsyncClient | None = None
+
+    def _ensure_client(self) -> AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = AsyncClient(headers={"User-Agent": "Mozilla/5.0"})
+        return self._client
 
     async def download(self, url: str) -> bytes:
         """Downloads the image from the given URL.
@@ -66,17 +72,22 @@ class HTTPBasedSource(BaseSource):
         Returns:
             bytes: The image content.
         """
-        response = await self._client.get(url)
+        client = self._ensure_client()
+        response = await client.get(url)
         response.raise_for_status()
         return response.content
 
+    async def aclose(self) -> None:
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
+
     async def __aenter__(self):
-        self._client = AsyncClient(headers={"User-Agent": "Mozilla/5.0"})
-        await self._client.__aenter__()
+        self._ensure_client()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        await self._client.__aexit__(exc_type, exc_value, traceback)
+        await self.aclose()
 
 
 class EmojiStyle(str, Enum):

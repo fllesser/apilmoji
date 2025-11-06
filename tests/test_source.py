@@ -79,3 +79,36 @@ async def test_pilmoji():
 
         assert image is not None
         image.save(cache_dir / "test_pilmoji.png")
+
+
+@pytest.mark.asyncio
+async def test_source_without_context_manager():
+    from pilmoji import EmojiCDNSource
+
+    source = EmojiCDNSource(cache_dir=cache_dir)
+
+    try:
+        image = await source.get_emoji("👍")
+        assert image is not None
+    finally:
+        await source.aclose()
+
+
+@pytest.mark.asyncio
+async def test_pilmoji_without_context_manager():
+    from PIL import Image, ImageFont
+
+    from pilmoji import EmojiCDNSource, Pilmoji
+
+    font = ImageFont.truetype(font_path, 24)
+    source = EmojiCDNSource(cache_dir=cache_dir)
+    pilmoji = Pilmoji(source=source)
+
+    try:
+        image = Image.new("RGB", (300, 200), (255, 255, 255))
+        for y in range(10, 170, 30):
+            await pilmoji.text(image, (10, y), "Hello 👍 world 😎", font, (0, 0, 0))
+
+        assert image is not None
+    finally:
+        await pilmoji.aclose()
