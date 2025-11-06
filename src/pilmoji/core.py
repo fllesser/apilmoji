@@ -121,7 +121,112 @@ class Pilmoji:
             stream.seek(0)
             return stream
 
+    def _render_text_node(
+        self, draw: ImageDraw.ImageDraw, pos: tuple[int, int], content: str, font: FontT, fill: ColorT | None
+    ) -> int:
+        """渲染文本节点，返回占用的宽度"""
+        draw.text(pos, content, font=font, fill=fill)
+        return int(font.getlength(content))
+
+    def _render_emoji_node(self, image: Image.Image, pos: tuple[int, int], stream: BytesIO, font_size: float) -> int:
+        """渲染 emoji 节点，返回占用的宽度"""
+        stream.seek(0)
+        with Image.open(stream).convert("RGBA") as emoji_img:
+            emoji_size = int(font_size)
+            aspect_ratio = emoji_img.height / emoji_img.width
+            resized = emoji_img.resize((emoji_size, int(emoji_size * aspect_ratio)), Image.Resampling.LANCZOS)
+            image.paste(resized, pos, resized)
+            return emoji_size
+
     async def text(
+        self,
+        image: Image.Image,
+        xy: tuple[int, int],
+        text: str,
+        font: FontT,
+        fill: ColorT | None = None,
+    ) -> None:
+        """简化版的文本渲染方法，支持 emoji。
+
+        这个方法提供了更简单直接的实现，去掉了复杂的排版参数。
+        适合大多数简单场景使用。
+
+        Parameters
+        ----------
+        image: Image.Image
+            要渲染到的图像
+        xy: tuple[int, int]
+            渲染位置 (x, y)
+        text: str
+            要渲染的文本（支持单行或多行）
+        font: FontT
+            字体
+        fill: ColorT | None
+            文本颜色，默认为黑色
+        """
+        draw = ImageDraw.Draw(image)
+        x, y = xy
+
+        # 解析文本为节点
+        lines = to_nodes(text)
+
+        # 收集所有需要下载的 emoji（去重）
+        emoji_set: dict[str, None] = {}
+        discord_emoji_set: dict[int, None] = {}
+
+        for line in lines:
+            for node in line:
+                if node.type is NodeType.emoji:
+                    emoji_set[node.content] = None
+                elif self._render_discord_emoji and node.type is NodeType.discord_emoji:
+                    discord_emoji_set[int(node.content)] = None
+
+        # 并发下载所有 emoji
+        emoji_tasks = [self._get_emoji(emoji) for emoji in emoji_set.keys()]
+        discord_tasks = [self._get_discord_emoji(eid) for eid in discord_emoji_set.keys()]
+
+        emoji_results = []
+        if emoji_tasks or discord_tasks:
+            results = await asyncio.gather(*emoji_tasks, *discord_tasks)
+            emoji_results = results[: len(emoji_tasks)]
+            discord_results = results[len(emoji_tasks) :]
+
+            # 建立映射
+            emoji_map = dict(zip(emoji_set.keys(), emoji_results))
+            discord_map = dict(zip(discord_emoji_set.keys(), discord_results))
+        else:
+            emoji_map = {}
+            discord_map = {}
+
+        # 渲染每一行
+        font_size = get_font_size(font)
+        line_height = int(font_size * 1.2)  # 行高为字体大小的 1.2 倍
+
+        for line in lines:
+            current_x = x
+
+            for node in line:
+                if node.type is NodeType.text:
+                    current_x += self._render_text_node(draw, (current_x, y), node.content, font, fill)
+
+                elif node.type is NodeType.emoji:
+                    stream = emoji_map.get(node.content)
+                    if stream:
+                        current_x += self._render_emoji_node(image, (current_x, y), stream, font_size)
+                    else:
+                        current_x += self._render_text_node(draw, (current_x, y), node.content, font, fill)
+
+                elif self._render_discord_emoji and node.type is NodeType.discord_emoji:
+                    stream = discord_map.get(int(node.content))
+                    if stream:
+                        current_x += self._render_emoji_node(image, (current_x, y), stream, font_size)
+                    else:
+                        placeholder = f"[:{node.content}:]"
+                        current_x += self._render_text_node(draw, (current_x, y), placeholder, font, fill)
+
+            y += line_height
+
+    async def text_old(
         self,
         image: Image.Image,
         xy: tuple[int, int],
