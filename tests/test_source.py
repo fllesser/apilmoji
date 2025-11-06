@@ -18,10 +18,10 @@ def clean_dir(path: Path):
 
 
 # 执行前清除缓存
-@pytest.fixture(autouse=True)
-def clean_cache_dir():
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    clean_dir(cache_dir)
+# @pytest.fixture(autouse=True)
+# def clean_cache_dir():
+#     cache_dir.mkdir(parents=True, exist_ok=True)
+#     clean_dir(cache_dir)
 
 
 @pytest.mark.asyncio
