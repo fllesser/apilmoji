@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Awaitable
 from io import BytesIO
 import math
 from typing import TYPE_CHECKING, SupportsInt
@@ -225,7 +227,9 @@ class Pilmoji:
         nodes_line_to_print = []
         widths = []
         max_width = 0
-        streams = {}
+        streams: dict[int, dict[int, BytesIO]] = {}
+        fetch_lookup: dict[tuple[NodeType, str | int], Awaitable[BytesIO | None]] = {}
+        slot_lookup: dict[tuple[int, int], tuple[NodeType, str | int]] = {}
         mode = draw.fontmode
         if stroke_width == 0 and embedded_color:
             mode = "RGBA"
@@ -236,35 +240,50 @@ class Pilmoji:
         )
 
         for node_id, line in enumerate(nodes):
-            text_line = ""
             streams[node_id] = {}
             for line_id, node in enumerate(line):
-                content = node.content
-                stream = None
                 if node.type is NodeType.emoji:
-                    stream = await self._get_emoji(content)
-
+                    key = (NodeType.emoji, node.content)
+                    slot_lookup[(node_id, line_id)] = key
+                    if key not in fetch_lookup:
+                        fetch_lookup[key] = self._get_emoji(node.content)
                 elif self._render_discord_emoji and node.type is NodeType.discord_emoji:
-                    stream = await self._get_discord_emoji(int(content))
+                    emoji_id = int(node.content)
+                    key = (NodeType.discord_emoji, emoji_id)
+                    slot_lookup[(node_id, line_id)] = key
+                    if key not in fetch_lookup:
+                        fetch_lookup[key] = self._get_discord_emoji(emoji_id)
 
+        if fetch_lookup:
+            keys = list(fetch_lookup.keys())
+            results = await asyncio.gather(*(fetch_lookup[key] for key in keys))
+            resolved_streams: dict[tuple[NodeType, str | int], BytesIO] = {}
+            for key, stream in zip(keys, results):
+                if stream:
+                    resolved_streams[key] = stream
+
+            for (node_id, line_id), key in slot_lookup.items():
+                stream = resolved_streams.get(key)
                 if stream:
                     streams[node_id][line_id] = stream
 
-                if node.type is NodeType.text or not stream:
+        for node_id, line in enumerate(nodes):
+            text_line = ""
+            for line_id, node in enumerate(line):
+                if node.type is NodeType.text or line_id not in streams[node_id]:
                     # each text in the same line are concatenate
                     text_line += node.content
                     continue
 
-                with Image.open(stream).convert("RGBA") as asset:
-                    # font is guaranteed to be FontT at this point (not None)
-                    assert font is not None, "Font should not be None at this point"
-                    width = round(emoji_scale_factor * get_font_size(font))
-                    ox, oy = emoji_position_offset
-                    size = round(width + ox + (node_spacing * 2))
-                    # for every emoji we calculate the space needed to display it in the current text
-                    space_to_had = round(size / space_text_length)
-                    # we had the equivalent space as " " character in the line text
-                    text_line += "".join(" " for x in range(space_to_had))
+                # font is guaranteed to be FontT at this point (not None)
+                assert font is not None, "Font should not be None at this point"
+                width = round(emoji_scale_factor * get_font_size(font))
+                ox, oy = emoji_position_offset
+                size = round(width + ox + (node_spacing * 2))
+                # for every emoji we calculate the space needed to display it in the current text
+                space_to_had = round(size / space_text_length)
+                # we had the equivalent space as " " character in the line text
+                text_line += "".join(" " for x in range(space_to_had))
 
             # saving each line with the place to display emoji at the right place
             nodes_line_to_print.append(text_line)
@@ -365,7 +384,9 @@ class Pilmoji:
                     continue
 
                 if line_id in streams[node_id]:
-                    with Image.open(streams[node_id][line_id]).convert("RGBA") as asset:
+                    stream = streams[node_id][line_id]
+                    stream.seek(0)
+                    with Image.open(stream).convert("RGBA") as asset:
                         # font is guaranteed to be FontT at this point (not None)
                         assert font is not None, "Font should not be None at this point"
                         width = round(emoji_scale_factor * get_font_size(font))
@@ -375,6 +396,7 @@ class Pilmoji:
 
                         image.paste(asset, (round(x + ox), round(line_y + oy)), asset)
                         x += node_spacing + width
+                    stream.seek(0)
                     continue
             y += line_spacing
 

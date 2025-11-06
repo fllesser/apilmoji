@@ -82,6 +82,24 @@ async def test_pilmoji():
 
 
 @pytest.mark.asyncio
+async def test_pilmoji_multiline():
+    from PIL import Image, ImageFont
+
+    from pilmoji import EmojiCDNSource, Pilmoji
+
+    my_string = (
+        "Hello, world! 👋 Here are some emojis: 🎨 🌊 😎\nI also support Discord emoji: <:rooThink:596576798351949847>"
+    )
+
+    font = ImageFont.truetype(font_path, 24)
+    async with Pilmoji(source=EmojiCDNSource(cache_dir=cache_dir)) as pilmoji:
+        image = Image.new("RGB", (500, 200), (255, 255, 255))
+        await pilmoji.text(image, (10, 10), my_string, font, (0, 0, 0))
+        assert image is not None
+        image.save(cache_dir / "test_pilmoji_multiline.png")
+
+
+@pytest.mark.asyncio
 async def test_source_without_context_manager():
     from pilmoji import EmojiCDNSource
 
