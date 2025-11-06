@@ -67,6 +67,8 @@ async def test_pilmoji():
     font = ImageFont.truetype(font_path, 24)
     async with Pilmoji(source=EmojiCDNSource(cache_dir=cache_dir)) as pilmoji:
         image = Image.new("RGB", (300, 200), (255, 255, 255))
-        await pilmoji.text(image, (10, 10), "Hello 👍 world 😎", font, (0, 0, 0))
+        for y in range(10, 170, 30):
+            await pilmoji.text(image, (10, y), "Hello 👍 world 😎", font, (0, 0, 0))
+
         assert image is not None
         image.save(cache_dir / "test_pilmoji.png")
