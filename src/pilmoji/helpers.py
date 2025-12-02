@@ -1,17 +1,13 @@
-from __future__ import annotations
-
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, Final, NamedTuple
+from typing import Final, NamedTuple
 
 import emoji
 from PIL import ImageFont
 
-if TYPE_CHECKING:
-    from .core import FontT
+FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
+ColorT = int | tuple[int, int, int] | tuple[int, int, int, int] | str
 
-# This is actually way faster than it seems
-# Only include emojis that have an English description and are fully qualified
 language_pack: dict[str, str] = {
     data["en"]: emj
     for emj, data in emoji.EMOJI_DATA.items()
@@ -21,48 +17,17 @@ _UNICODE_EMOJI_REGEX = "|".join(map(re.escape, sorted(language_pack.values(), ke
 _DISCORD_EMOJI_REGEX = "<a?:[a-zA-Z0-9_]{1,32}:[0-9]{17,22}>"
 
 EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(f"({_UNICODE_EMOJI_REGEX}|{_DISCORD_EMOJI_REGEX})")
-
-__all__ = ("EMOJI_REGEX", "Node", "NodeType", "get_font_size", "getsize", "to_nodes")
-
-
-def get_font_size(font: FontT) -> float:
-    """Get the size of a font, handling both FreeTypeFont and TransposedFont."""
-    if isinstance(font, ImageFont.TransposedFont):
-        assert not isinstance(font.font, ImageFont.ImageFont), "font.font should not be an ImageFont"
-        return font.font.size
-    return font.size
+UNICODE_EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(_UNICODE_EMOJI_REGEX)
 
 
 class NodeType(Enum):
-    """|enum|
-
-    Represents the type of a :class:`~.Node`.
-
-    Attributes
-    ----------
-    text
-        This node is a raw text node.
-    emoji
-        This node is a unicode emoji.
-    discord_emoji
-        This node is a Discord emoji.
-    """
-
     text = 0
     emoji = 1
     discord_emoji = 2
 
 
 class Node(NamedTuple):
-    """Represents a parsed node inside of a string.
-
-    Attributes
-    ----------
-    type: :class:`~.NodeType`
-        The type of this node.
-    content: str
-        The contents of this node.
-    """
+    """Represents a parsed node inside of a string."""
 
     type: NodeType
     content: str
@@ -71,46 +36,49 @@ class Node(NamedTuple):
         return f"<Node type={self.type.name!r} content={self.content!r}>"
 
 
-def _parse_line(line: str, /) -> list[Node]:
-    nodes = []
+def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
+    """解析一行文本，识别 Unicode emoji 和 Discord emoji"""
+    if not line:
+        return []
 
-    for i, chunk in enumerate(EMOJI_REGEX.split(line)):
-        if not chunk:
-            continue
+    last_end = 0
+    nodes: list[Node] = []
+    regex = UNICODE_EMOJI_REGEX if unicode_only else EMOJI_REGEX
 
-        if not i % 2:
-            nodes.append(Node(NodeType.text, chunk))
-            continue
+    for match in regex.finditer(line):
+        start, end = match.span()
 
-        if len(chunk) > 18:  # This is guaranteed to be a Discord emoji
-            node = Node(NodeType.discord_emoji, chunk.split(":")[-1][:-1])
-        else:
-            node = Node(NodeType.emoji, chunk)
+        # 添加 emoji 之前的文本
+        if start > last_end:
+            nodes.append(Node(NodeType.text, line[last_end:start]))
 
-        nodes.append(node)
+        # 添加 emoji 节点
+        emoji_text = match.group()
+        if len(emoji_text) > 18:  # Discord emoji
+            emoji_id = emoji_text.split(":")[-1][:-1]
+            nodes.append(Node(NodeType.discord_emoji, emoji_id))
+        else:  # Unicode emoji
+            nodes.append(Node(NodeType.emoji, emoji_text))
+
+        last_end = end
+
+    # 添加最后剩余的文本
+    if last_end < len(line):
+        nodes.append(Node(NodeType.text, line[last_end:]))
 
     return nodes
 
 
-def to_nodes(text: str, /) -> list[list[Node]]:
-    """Parses a string of text into :class:`~.Node`s.
+def to_nodes(text: str, unicode_only: bool = True) -> list[list[Node]]:
+    return [_parse_line(line, unicode_only) for line in text.splitlines()]
 
-    This method will return a nested list, each element of the list
-    being a list of :class:`~.Node`s and representing a line in the string.
 
-    The string ``'Hello\nworld'`` would return something similar to
-    ``[[Node('Hello')], [Node('world')]]``.
-
-    Parameters
-    ----------
-    text: str
-        The text to parse into nodes.
-
-    Returns
-    -------
-    List[List[:class:`~.Node`]]
-    """
-    return [_parse_line(line) for line in text.splitlines()]
+def get_font_size(font: FontT) -> float:
+    """Get the size of a font, handling both FreeTypeFont and TransposedFont."""
+    if isinstance(font, ImageFont.TransposedFont):
+        assert not isinstance(font.font, ImageFont.ImageFont), "font.font should not be an ImageFont"
+        return font.font.size
+    return font.size
 
 
 def getsize(
