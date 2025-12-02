@@ -83,7 +83,7 @@ class Pilmoji:
             stream.seek(0)
             return stream
 
-    def _render_text_node(
+    def _render_text(
         self,
         draw: ImageDraw.ImageDraw,
         pos: tuple[int, int],
@@ -95,7 +95,7 @@ class Pilmoji:
         draw.text(pos, content, font=font, fill=fill)
         return int(font.getlength(content))
 
-    def _render_emoji_node(
+    def _render_emoji(
         self,
         image: Image.Image,
         pos: tuple[int, int],
@@ -169,12 +169,12 @@ class Pilmoji:
                 if node.type is NodeType.emoji:
                     stream = emoji_map.get(node.content)
                     if stream:
-                        cur_x += self._render_emoji_node(image, (cur_x, y), stream, font_size)
+                        cur_x += self._render_emoji(image, (cur_x, y), stream, font_size)
                     else:
-                        cur_x += self._render_text_node(draw, (cur_x, y), node.content, font, fill)
+                        cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
                 else:
                     # 文本节点或 Discord emoji（作为文本渲染）
-                    cur_x += self._render_text_node(draw, (cur_x, y), node.content, font, fill)
+                    cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
 
             y += line_height
 
@@ -253,9 +253,9 @@ class Pilmoji:
 
                 # 渲染 emoji 或文本
                 if stream:
-                    cur_x += self._render_emoji_node(image, (cur_x, y), stream, font_size)
+                    cur_x += self._render_emoji(image, (cur_x, y), stream, font_size)
                 else:
-                    cur_x += self._render_text_node(draw, (cur_x, y), fallback_text, font, fill)
+                    cur_x += self._render_text(draw, (cur_x, y), fallback_text, font, fill)
 
             y += line_height
 
