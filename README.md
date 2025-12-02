@@ -12,7 +12,7 @@ Pilmoji comes equipped with support for both unicode emojis and Discord emojis.
 - Optional caching
 
 ## Installation and Requirements
-You must have Python 3.8 or higher in order to install Pilmoji.
+You must have Python 3.10 or higher in order to install Pilmoji.
 
 Installation can be done with `pip`:
 ```shell 

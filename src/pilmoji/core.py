@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import math
 import asyncio
 from io import BytesIO
-import math
 from typing import TYPE_CHECKING, SupportsInt
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .helpers import NodeType, get_font_size, to_nodes
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
+from .helpers import NodeType, to_nodes, get_font_size
 
 if TYPE_CHECKING:
     FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
@@ -121,13 +121,24 @@ class Pilmoji:
             return stream
 
     def _render_text_node(
-        self, draw: ImageDraw.ImageDraw, pos: tuple[int, int], content: str, font: FontT, fill: ColorT | None
+        self,
+        draw: ImageDraw.ImageDraw,
+        pos: tuple[int, int],
+        content: str,
+        font: FontT,
+        fill: ColorT | None,
     ) -> int:
         """渲染文本节点，返回占用的宽度"""
         draw.text(pos, content, font=font, fill=fill)
         return int(font.getlength(content))
 
-    def _render_emoji_node(self, image: Image.Image, pos: tuple[int, int], stream: BytesIO, font_size: float) -> int:
+    def _render_emoji_node(
+        self,
+        image: Image.Image,
+        pos: tuple[int, int],
+        stream: BytesIO,
+        font_size: float,
+    ) -> int:
         """渲染 emoji 节点，返回占用的宽度"""
         stream.seek(0)
         with Image.open(stream).convert("RGBA") as emoji_img:
@@ -338,7 +349,12 @@ class Pilmoji:
         ink = getink(fill)
         # we get the size taken by a " " to be drawn with the given options
         space_text_length = draw.textlength(
-            " ", font, direction=direction, features=features, language=language, embedded_color=embedded_color
+            " ",
+            font,
+            direction=direction,
+            features=features,
+            language=language,
+            embedded_color=embedded_color,
         )
 
         for node_id, line in enumerate(nodes):
@@ -374,7 +390,13 @@ class Pilmoji:
 
             # saving each line with the place to display emoji at the right place
             nodes_line_to_print.append(text_line)
-            line_width = draw.textlength(text_line, font, direction=direction, features=features, language=language)
+            line_width = draw.textlength(
+                text_line,
+                font,
+                direction=direction,
+                features=features,
+                language=language,
+            )
             widths.append(line_width)
             max_width = max(max_width, line_width)
 
@@ -466,7 +488,14 @@ class Pilmoji:
                 # if node is text then we decale our x
                 # but since the text line as already be drawn we do not need to draw text here anymore
                 if node.type is NodeType.text or line_id not in streams[node_id]:
-                    width = int(font.getlength(content, direction=direction, features=features, language=language))
+                    width = int(
+                        font.getlength(
+                            content,
+                            direction=direction,
+                            features=features,
+                            language=language,
+                        )
+                    )
                     x += node_spacing + width
                     continue
 
@@ -475,7 +504,10 @@ class Pilmoji:
                         # font is guaranteed to be FontT at this point (not None)
                         assert font is not None, "Font should not be None at this point"
                         width = round(emoji_scale_factor * get_font_size(font))
-                        size = width, round(math.ceil(asset.height / asset.width * width))
+                        size = (
+                            width,
+                            round(math.ceil(asset.height / asset.width * width)),
+                        )
                         asset = asset.resize(size, Image.Resampling.LANCZOS)
                         ox, oy = emoji_position_offset
 

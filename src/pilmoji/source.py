@@ -1,10 +1,10 @@
+from io import BytesIO
 from abc import ABC, abstractmethod
 from enum import Enum
-from io import BytesIO
 from pathlib import Path
 
+from httpx import HTTPError, AsyncClient
 from aiofiles import open as aopen
-from httpx import AsyncClient, HTTPError
 
 __all__ = (
     "BaseSource",
@@ -18,7 +18,7 @@ class BaseSource(ABC):
 
     @abstractmethod
     async def get_emoji(self, emoji: str) -> BytesIO | None:
-        """Retrieves a :class:`io.BytesIO` stream for the image of the given emoji.
+        """Get the image of the emoji with the given name.
 
         Args:
             emoji (str): The emoji to retrieve.
@@ -33,7 +33,7 @@ class BaseSource(ABC):
 
     @abstractmethod
     async def get_discord_emoji(self, id: int) -> BytesIO | None:
-        """Retrieves a :class:`io.BytesIO` stream for the image of the given Discord emoji.
+        """Get the image of the Discord emoji with the given ID.
 
         Args:
             id (int): The snowflake ID of the Discord emoji.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import Enum
 import re
+from enum import Enum
 from typing import TYPE_CHECKING, Final, NamedTuple
 
 import emoji
@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from .core import FontT
 
 # This is actually way faster than it seems
-# Create a dictionary mapping English emoji descriptions to their unicode representations
 # Only include emojis that have an English description and are fully qualified
 language_pack: dict[str, str] = {
     data["en"]: emj

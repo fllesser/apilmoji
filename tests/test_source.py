@@ -56,7 +56,7 @@ async def test_get_discord_emoji_from_cdn():
 
 @pytest.mark.asyncio
 async def test_all_style():
-    from pilmoji import EmojiCDNSource, EmojiStyle
+    from pilmoji import EmojiStyle, EmojiCDNSource
 
     emoji_str = "👍"
     for style in EmojiStyle:
@@ -69,7 +69,7 @@ async def test_all_style():
 async def test_pilmoji():
     from PIL import Image, ImageFont
 
-    from pilmoji import EmojiCDNSource, Pilmoji
+    from pilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     async with Pilmoji(source=EmojiCDNSource(cache_dir=cache_dir)) as pilmoji:
@@ -85,7 +85,7 @@ async def test_pilmoji():
 async def test_pilmoji_old_text():
     from PIL import Image, ImageFont
 
-    from pilmoji import EmojiCDNSource, Pilmoji
+    from pilmoji import Pilmoji, EmojiCDNSource
 
     my_string = (
         "Hello, world! 👋 Here are some emojis: 🎨 🌊 😎\nI also support Discord emoji: <:rooThink:596576798351949847>"
@@ -96,14 +96,14 @@ async def test_pilmoji_old_text():
         image = Image.new("RGB", (500, 200), (255, 255, 255))
         await pilmoji.text_old(image, (10, 10), my_string, font, (0, 0, 0))
         assert image is not None
-        image.save(cache_dir / "test_pilmoji_multiline.png")
+        image.save(cache_dir / "test_pilmoji_multiline_old.png")
 
 
 @pytest.mark.asyncio
 async def test_pilmoji_text_quick():
     from PIL import Image, ImageFont
 
-    from pilmoji import EmojiCDNSource, Pilmoji
+    from pilmoji import Pilmoji, EmojiCDNSource
 
     my_string = (
         "Hello, world! 👋 Here are some emojis: 🎨 🌊 😎\nI also support Discord emoji: <:rooThink:596576798351949847>"
@@ -134,7 +134,7 @@ async def test_source_without_context_manager():
 async def test_pilmoji_without_context_manager():
     from PIL import Image, ImageFont
 
-    from pilmoji import EmojiCDNSource, Pilmoji
+    from pilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
