@@ -8,9 +8,10 @@ on:
     paths:
       - "src/**"
       - "tests/**"
+      - ".github/**"
       - "pyproject.toml"
       - "uv.lock"
-      - ".github/**"
+
 
 jobs:
   typos:
@@ -36,7 +37,6 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         # os: [ubuntu-latest, windows-latest, macos-latest]
-        # pydantic-version: ["v1", "v2"]
 
     env:
       # OS: ${{ matrix.os }}
@@ -50,11 +50,11 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON }}
           version: "latest"
 
-      - name: Install Dependencies for test group
-        run: uv sync --no-dev --locked
+      - name: Install Dependencies
+        run: uv sync --locked
 
       - name: Run Pytest
         run: uv run poe test
