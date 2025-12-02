@@ -1,85 +1,257 @@
-# Pilmoji
-Pilmoji is an emoji renderer for [Pillow](https://github.com/python-pillow/Pillow/), 
-Python's imaging library.
+# Pilmoji for Parser
 
-Pilmoji comes equipped with support for both unicode emojis and Discord emojis.
+A simplified emoji renderer for [Pillow](https://github.com/python-pillow/Pillow/), Python's imaging library. This is a streamlined fork optimized for use with [nonebot-plugin-parser](https://github.com/fllesser/nonebot-plugin-parser).
 
-## Features
-- Discord emoji support
-- Multi-line rendering support
-- Emoji position and/or size adjusting
-- Many built-in emoji sources
-- Optional caching
+## ✨ Features
 
-## Installation and Requirements
-You must have Python 3.10 or higher in order to install Pilmoji.
+- 🎨 **Unicode Emoji Support** - Render standard Unicode emojis
+- 💬 **Discord Emoji Support** - Render custom Discord emojis
+- 📝 **Multi-line Text** - Automatic line break handling
+- 🎭 **Multiple Emoji Styles** - Apple, Google, Twitter, Facebook
+- ⚡ **Async/Await** - Built with modern async Python
+- 💾 **Smart Caching** - Local file caching for better performance
+- 🔧 **Simple API** - Easy-to-use interface with sensible defaults
 
-Installation can be done with `pip`:
-```shell 
-$ pip install -U pilmoji
+## 📦 Installation
+
+**Requirements:** Python 3.10 or higher
+
+```bash
+pip install pilmoji-for-parser
 ```
 
-Optionally, you can add the `[requests]` option to install requests
-alongside Pilmoji:
-```shell 
-$ pip install -U pilmoji[requests]
+Or install from source:
+
+```bash
+git clone https://github.com/fllesser/pilmoji-for-parser.git
+cd pilmoji-for-parser
+pip install .
 ```
 
-The option is not required, instead if `requests` is not installed, 
-Pilmoji will fallback to use the builtin `urllib`.
+## 🚀 Quick Start
 
-You may also install from Github.
+### Basic Usage (Unicode Emoji Only)
 
-## Usage
-```py 
+```python
+import asyncio
 from pilmoji import Pilmoji
 from PIL import Image, ImageFont
 
-
-my_string = '''
-Hello, world! 👋 Here are some emojis: 🎨 🌊 😎
-I also support Discord emoji: <:rooThink:596576798351949847>
-'''
-
-with Image.new('RGB', (550, 80), (255, 255, 255)) as image:
+async def main():
+    text = '''
+    Hello, world! 👋 
+    Here are some emojis: 🎨 🌊 😎
+    Multi-line support! 🚀 ✨
+    '''
+    
+    # Create image
+    image = Image.new('RGB', (550, 150), (255, 255, 255))
     font = ImageFont.truetype('arial.ttf', 24)
-
-    with Pilmoji(image) as pilmoji:
-        pilmoji.text((10, 10), my_string.strip(), (0, 0, 0), font)
-
+    
+    # Render text with emojis
+    async with Pilmoji() as pilmoji:
+        await pilmoji.text(image, (10, 10), text.strip(), font, fill=(0, 0, 0))
+    
+    image.save('output.png')
     image.show()
+
+asyncio.run(main())
 ```
 
-#### Result
-![Example result](https://jay.has-no-bra.in/f/j4iEcc.png)
+### With Discord Emoji Support
 
-## Switching emoji sources
-As seen from the example, Pilmoji defaults to the `Twemoji` emoji source. 
+```python
+async def main():
+    text = '''
+    Unicode emoji: 👋 🎨 😎
+    Discord emoji: <:custom:123456789012345678>
+    '''
+    
+    image = Image.new('RGB', (550, 100), (255, 255, 255))
+    font = ImageFont.truetype('arial.ttf', 24)
+    
+    async with Pilmoji() as pilmoji:
+        await pilmoji.text_with_discord_emoji(
+            image, (10, 10), text.strip(), font, fill=(0, 0, 0)
+        )
+    
+    image.save('output.png')
 
-If you prefer emojis from a different source, for example Microsoft, simply
-set the `source` kwarg in the constructor to a source found in the 
-`pilmoji.source` module:
-
-```py 
-from pilmoji.source import MicrosoftEmojiSource
-
-with Pilmoji(image, source=MicrosoftEmojiSource) as pilmoji:
-    ...
+asyncio.run(main())
 ```
 
-![results](https://jay.has-no-bra.in/f/suPfj0.png)
+## 🎨 Emoji Styles
 
-It is also possible to create your own emoji sources via subclass.
+Choose from different emoji styles:
 
-## Fine adjustments
-If an emoji looks too small or too big, or out of place, you can make fine adjustments 
-with the `emoji_scale_factor` and `emoji_position_offset` kwargs:
+```python
+from pilmoji import Pilmoji, EmojiStyle, EmojiCDNSource
 
-```py 
-pilmoji.text((10, 10), my_string.strip(), (0, 0, 0), font,
-             emoji_scale_factor=1.15, emoji_position_offset=(0, -2))
+# Apple style (default)
+source = EmojiCDNSource(style=EmojiStyle.APPLE)
+
+# Google style
+source = EmojiCDNSource(style=EmojiStyle.GOOGLE)
+
+# Twitter style
+source = EmojiCDNSource(style=EmojiStyle.TWITTER)
+
+# Facebook style
+source = EmojiCDNSource(style=EmojiStyle.FACEBOOK)
+
+async with Pilmoji(source=source) as pilmoji:
+    await pilmoji.text(image, (10, 10), "Hello 👋", font)
 ```
 
-## Contributing
-Contributions are welcome. Make sure to follow [PEP-8](https://www.python.org/dev/peps/pep-0008/)
-styling guidelines.
+## 🔧 API Reference
+
+### `Pilmoji`
+
+Main class for rendering text with emojis.
+
+**Constructor:**
+```python
+Pilmoji(
+    source: BaseSource = EmojiCDNSource(),
+    cache: bool = True
+)
+```
+
+**Parameters:**
+- `source`: Emoji source to use (default: `EmojiCDNSource()`)
+- `cache`: Enable emoji caching (default: `True`)
+
+**Methods:**
+
+#### `async text(image, xy, text, font, fill=None)`
+
+Render text with Unicode emoji support.
+
+- `image`: PIL Image object to render onto
+- `xy`: Tuple of (x, y) coordinates for text position
+- `text`: Text string to render (supports multiple lines)
+- `font`: PIL Font object
+- `fill`: Text color (default: black)
+
+#### `async text_with_discord_emoji(image, xy, text, font, fill=None)`
+
+Render text with both Unicode and Discord emoji support.
+
+Parameters are the same as `text()`.
+
+### `EmojiCDNSource`
+
+Default emoji source using [emojicdn.elk.sh](https://emojicdn.elk.sh/).
+
+**Constructor:**
+```python
+EmojiCDNSource(
+    style: EmojiStyle = EmojiStyle.APPLE,
+    cache_dir: Path | None = None
+)
+```
+
+**Parameters:**
+- `style`: Emoji style to use (Apple, Google, Twitter, Facebook)
+- `cache_dir`: Custom cache directory (default: `~/.cache/pilmoji`)
+
+## 🔌 Custom Emoji Sources
+
+Create your own emoji source by subclassing `BaseSource`:
+
+```python
+from pilmoji import BaseSource
+from io import BytesIO
+
+class CustomEmojiSource(BaseSource):
+    async def get_emoji(self, emoji: str) -> BytesIO | None:
+        # Your custom emoji fetching logic
+        pass
+    
+    async def get_discord_emoji(self, id: int) -> BytesIO | None:
+        # Your custom Discord emoji fetching logic
+        pass
+
+# Use your custom source
+async with Pilmoji(source=CustomEmojiSource()) as pilmoji:
+    await pilmoji.text(image, (10, 10), "Hello 👋", font)
+```
+
+## 📝 Examples
+
+### Different Text Colors
+
+```python
+# Red text
+await pilmoji.text(image, (10, 10), "Red text 🔴", font, fill=(255, 0, 0))
+
+# RGB tuple
+await pilmoji.text(image, (10, 50), "Blue text 🔵", font, fill=(0, 0, 255))
+
+# RGBA tuple with transparency
+await pilmoji.text(image, (10, 90), "Semi-transparent 👻", font, fill=(0, 0, 0, 128))
+```
+
+### Multi-line Text
+
+```python
+text = """Line 1 with emoji 🎨
+Line 2 with emoji 🌊
+Line 3 with emoji 😎"""
+
+await pilmoji.text(image, (10, 10), text, font, fill=(0, 0, 0))
+```
+
+### Without Context Manager
+
+```python
+pilmoji = Pilmoji()
+await pilmoji.text(image, (10, 10), "Hello 👋", font)
+await pilmoji.aclose()  # Don't forget to close!
+```
+
+## 🧪 Development
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/fllesser/pilmoji-for-parser.git
+cd pilmoji-for-parser
+
+# Install dependencies
+uv sync --dev
+
+# Run tests
+uv run pytest
+
+# Run linting
+uv run ruff check src/
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+uv run poe test
+
+# Run with coverage
+uv run pytest --cov=src --cov-report=html
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Original [Pilmoji](https://github.com/jay3332/pilmoji) project by jay3332
+- [Pillow](https://github.com/python-pillow/Pillow/) - Python Imaging Library
+- [emojicdn.elk.sh](https://emojicdn.elk.sh/) - Emoji CDN service
+
+## 🔗 Links
+
+- **Repository:** https://github.com/fllesser/pilmoji-for-parser
+- **Issues:** https://github.com/fllesser/pilmoji-for-parser/issues
+- **Releases:** https://github.com/fllesser/pilmoji-for-parser/releases
+- **Related Project:** [nonebot-plugin-parser](https://github.com/fllesser/nonebot-plugin-parser)
