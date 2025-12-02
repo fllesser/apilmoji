@@ -21,9 +21,9 @@ UNICODE_EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(_UNICODE_EMOJI_REGEX)
 
 
 class NodeType(Enum):
-    text = 0
-    emoji = 1
-    discord_emoji = 2
+    TEXT = 0
+    EMOJI = 1
+    DISCORD_EMOJI = 2
 
 
 class Node(NamedTuple):
@@ -32,14 +32,9 @@ class Node(NamedTuple):
     type: NodeType
     content: str
 
-    def __repr__(self) -> str:
-        return f"<Node type={self.type.name!r} content={self.content!r}>"
-
 
 def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
     """解析一行文本，识别 Unicode emoji 和 Discord emoji"""
-    if not line:
-        return []
 
     last_end = 0
     nodes: list[Node] = []
@@ -50,21 +45,21 @@ def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
 
         # 添加 emoji 之前的文本
         if start > last_end:
-            nodes.append(Node(NodeType.text, line[last_end:start]))
+            nodes.append(Node(NodeType.TEXT, line[last_end:start]))
 
         # 添加 emoji 节点
         emoji_text = match.group()
         if len(emoji_text) > 18:  # Discord emoji
             emoji_id = emoji_text.split(":")[-1][:-1]
-            nodes.append(Node(NodeType.discord_emoji, emoji_id))
+            nodes.append(Node(NodeType.DISCORD_EMOJI, emoji_id))
         else:  # Unicode emoji
-            nodes.append(Node(NodeType.emoji, emoji_text))
+            nodes.append(Node(NodeType.EMOJI, emoji_text))
 
         last_end = end
 
     # 添加最后剩余的文本
     if last_end < len(line):
-        nodes.append(Node(NodeType.text, line[last_end:]))
+        nodes.append(Node(NodeType.TEXT, line[last_end:]))
 
     return nodes
 

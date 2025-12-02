@@ -147,7 +147,7 @@ class Pilmoji:
         lines = to_nodes(text)
 
         # 收集所有需要下载的 Unicode emoji（去重）
-        emoji_set = {node.content for line in lines for node in line if node.type is NodeType.emoji}
+        emoji_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
 
         # 并发下载所有 emoji
         emoji_tasks = [self._get_emoji(emoji) for emoji in emoji_set]
@@ -166,7 +166,7 @@ class Pilmoji:
             cur_x = x
 
             for node in line:
-                if node.type is NodeType.emoji:
+                if node.type is NodeType.EMOJI:
                     stream = emoji_map.get(node.content)
                     if stream:
                         cur_x += self._render_emoji(image, (cur_x, y + 2), stream, font_size)
@@ -211,10 +211,10 @@ class Pilmoji:
         lines = to_nodes(text, False)
 
         # 收集所有需要下载的 emoji（去重）
-        emoji_set = {node.content for line in lines for node in line if node.type is NodeType.emoji}
+        emoji_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
 
         discord_emoji_set = {
-            int(node.content) for line in lines for node in line if node.type is NodeType.discord_emoji
+            int(node.content) for line in lines for node in line if node.type is NodeType.DISCORD_EMOJI
         }
 
         # 并发下载所有 emoji
@@ -244,9 +244,9 @@ class Pilmoji:
                 stream = None
                 fallback_text = node.content
 
-                if node.type is NodeType.emoji:
+                if node.type is NodeType.EMOJI:
                     stream = emoji_map.get(node.content)
-                elif node.type is NodeType.discord_emoji:
+                elif node.type is NodeType.DISCORD_EMOJI:
                     stream = discord_map.get(int(node.content))
                     if not stream:
                         fallback_text = f"[:{node.content}:]"
