@@ -11,7 +11,7 @@ from .helpers import FontT, ColorT, NodeType, to_nodes, get_font_size, get_font_
 class Pilmoji:
     """The emoji rendering interface."""
 
-    SIZE_DIFF = 2
+    SIZE_DIFF = 1
 
     def __init__(
         self,
@@ -68,10 +68,9 @@ class Pilmoji:
         content: str,
         font: FontT,
         fill: ColorT | None,
-    ) -> int:
-        """Render a text node and return its width."""
+    ):
+        """Render a text node."""
         draw.text(xy, content, font=font, fill=fill)
-        return int(font.getlength(content))
 
     def _render_emoji(
         self,
@@ -79,8 +78,8 @@ class Pilmoji:
         xy: tuple[int, int],
         bytesio: BytesIO,
         size: float,
-    ) -> int:
-        """Render an emoji node and return its width."""
+    ):
+        """Render an emoji node."""
         bytesio.seek(0)
         with Image.open(bytesio).convert("RGBA") as emoji_img:
             emoji_size = int(size) - self.SIZE_DIFF
@@ -90,7 +89,6 @@ class Pilmoji:
                 Image.Resampling.LANCZOS,
             )
             image.paste(resized, xy, resized)
-            return emoji_size
 
     async def text(
         self,
@@ -147,12 +145,13 @@ class Pilmoji:
             for node in line:
                 if node.type is NodeType.EMOJI:
                     if bytesio := emoji_map.get(node.content):
-                        cur_x += self._render_emoji(image, (cur_x, y + y_diff), bytesio, font_size)
+                        self._render_emoji(image, (cur_x, y + y_diff), bytesio, font_size)
                     else:
-                        cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
+                        self._render_text(draw, (cur_x, y), node.content, font, fill)
                 else:
                     # Text node or Discord emoji (rendered as text)
-                    cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
+                    self._render_text(draw, (cur_x, y), node.content, font, fill)
+                cur_x += int(font_size)
 
             y += line_height
 
@@ -232,9 +231,11 @@ class Pilmoji:
 
                 # Render emoji or text
                 if stream:
-                    cur_x += self._render_emoji(image, (cur_x, y + y_diff), stream, font_size)
+                    self._render_emoji(image, (cur_x, y + y_diff), stream, font_size)
                 else:
-                    cur_x += self._render_text(draw, (cur_x, y), fallback_text, font, fill)
+                    self._render_text(draw, (cur_x, y), fallback_text, font, fill)
+
+                cur_x += int(font_size)
 
             y += line_height
 
