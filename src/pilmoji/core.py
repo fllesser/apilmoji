@@ -169,7 +169,7 @@ class Pilmoji:
                 if node.type is NodeType.emoji:
                     stream = emoji_map.get(node.content)
                     if stream:
-                        cur_x += self._render_emoji(image, (cur_x, y), stream, font_size)
+                        cur_x += self._render_emoji(image, (cur_x, y + 2), stream, font_size)
                     else:
                         cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
                 else:
@@ -253,7 +253,7 @@ class Pilmoji:
 
                 # 渲染 emoji 或文本
                 if stream:
-                    cur_x += self._render_emoji(image, (cur_x, y), stream, font_size)
+                    cur_x += self._render_emoji(image, (cur_x, y + 2), stream, font_size)
                 else:
                     cur_x += self._render_text(draw, (cur_x, y), fallback_text, font, fill)
 
