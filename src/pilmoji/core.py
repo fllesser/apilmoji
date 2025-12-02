@@ -11,7 +11,7 @@ from .helpers import FontT, ColorT, NodeType, to_nodes, get_font_size, get_font_
 class Pilmoji:
     """The emoji rendering interface."""
 
-    EMOJI_PADDING = 1
+    SIZE_DIFF = 2
 
     def __init__(
         self,
@@ -83,7 +83,7 @@ class Pilmoji:
         """Render an emoji node and return its width."""
         bytesio.seek(0)
         with Image.open(bytesio).convert("RGBA") as emoji_img:
-            emoji_size = int(size) - self.EMOJI_PADDING
+            emoji_size = int(size) - self.SIZE_DIFF
             aspect_ratio = emoji_img.height / emoji_img.width
             resized = emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
