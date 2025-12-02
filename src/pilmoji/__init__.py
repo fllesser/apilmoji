@@ -1,7 +1,4 @@
-from .core import Pilmoji as Pilmoji
-from .source import BaseSource as BaseSource
-from .source import EmojiStyle as EmojiStyle
-from .source import EmojiCDNSource as EmojiCDNSource
-from .source import HTTPBasedSource as HTTPBasedSource
+from .core import Pilmoji
+from .source import BaseSource, EmojiStyle, EmojiCDNSource, HTTPBasedSource
 
-__all__ = ("EmojiCDNSource", "EmojiStyle", "HTTPBasedSource", "Pilmoji")
+__all__ = ("BaseSource", "EmojiCDNSource", "EmojiStyle", "HTTPBasedSource", "Pilmoji")

@@ -5,37 +5,26 @@ from typing import SupportsInt
 from PIL import Image, ImageDraw
 
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
-from .helpers import FontT, ColorT, NodeType, to_nodes, get_font_size
-
-__all__ = ("Pilmoji",)
+from .helpers import FontT, ColorT, NodeType, to_nodes, get_font_size, get_font_height
 
 
 class Pilmoji:
     """The emoji rendering interface."""
+
+    SIZE_DIFF = 1
 
     def __init__(
         self,
         *,
         source: BaseSource = EmojiCDNSource(),
         cache: bool = True,
-        emoji_scale_factor: float = 1.0,
-        emoji_position_offset: tuple[int, int] = (0, 0),
     ) -> None:
         self._cache: bool = cache
-        self._closed: bool = False
-        self._new_draw: bool = False
-        self.source: BaseSource = source
-
-        self._default_emoji_scale_factor: float = emoji_scale_factor
-        self._default_emoji_position_offset: tuple[int, int] = emoji_position_offset
-
+        self._source: BaseSource = source
         self._emoji_cache: dict[str, BytesIO] = {}
         self._discord_emoji_cache: dict[int, BytesIO] = {}
 
     def close(self) -> None:
-        if self._closed:
-            raise ValueError("Pilmoji has already been closed.")
-
         if self._cache:
             for stream in self._emoji_cache.values():
                 stream.close()
@@ -46,73 +35,60 @@ class Pilmoji:
             self._emoji_cache = {}
             self._discord_emoji_cache = {}
 
-        self._closed = True
-
     async def aclose(self) -> None:
-        if not self._closed:
-            self.close()
-
-        if isinstance(self.source, HTTPBasedSource):
-            await self.source.aclose()
+        if isinstance(self._source, HTTPBasedSource):
+            await self._source.aclose()
 
     async def _get_emoji(self, emoji: str) -> BytesIO | None:
         if self._cache and emoji in self._emoji_cache:
-            entry = self._emoji_cache[emoji]
-            entry.seek(0)
-            return entry
+            bytesio = self._emoji_cache[emoji]
+            return bytesio
 
-        if stream := await self.source.get_emoji(emoji):
+        if bytesio := await self._source.get_emoji(emoji):
             if self._cache:
-                self._emoji_cache[emoji] = stream
-
-            stream.seek(0)
-            return stream
+                self._emoji_cache[emoji] = bytesio
+            return bytesio
 
     async def _get_discord_emoji(self, id: SupportsInt) -> BytesIO | None:
         id = int(id)
 
         if self._cache and id in self._discord_emoji_cache:
-            entry = self._discord_emoji_cache[id]
-            entry.seek(0)
-            return entry
+            bytesio = self._discord_emoji_cache[id]
+            return bytesio
 
-        if stream := await self.source.get_discord_emoji(id):
+        if bytesio := await self._source.get_discord_emoji(id):
             if self._cache:
-                self._discord_emoji_cache[id] = stream
-
-            stream.seek(0)
-            return stream
+                self._discord_emoji_cache[id] = bytesio
+            return bytesio
 
     def _render_text(
         self,
         draw: ImageDraw.ImageDraw,
-        pos: tuple[int, int],
+        xy: tuple[int, int],
         content: str,
         font: FontT,
         fill: ColorT | None,
-    ) -> int:
-        """渲染文本节点，返回占用的宽度"""
-        draw.text(pos, content, font=font, fill=fill)
-        return int(font.getlength(content))
+    ):
+        """Render a text node."""
+        draw.text(xy, content, font=font, fill=fill)
 
     def _render_emoji(
         self,
         image: Image.Image,
-        pos: tuple[int, int],
-        stream: BytesIO,
-        font_size: float,
-    ) -> int:
-        """渲染 emoji 节点，返回占用的宽度"""
-        stream.seek(0)
-        with Image.open(stream).convert("RGBA") as emoji_img:
-            emoji_size = int(font_size)
+        xy: tuple[int, int],
+        bytesio: BytesIO,
+        size: float,
+    ):
+        """Render an emoji node."""
+        bytesio.seek(0)
+        with Image.open(bytesio).convert("RGBA") as emoji_img:
+            emoji_size = int(size) - self.SIZE_DIFF
             aspect_ratio = emoji_img.height / emoji_img.width
             resized = emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
                 Image.Resampling.LANCZOS,
             )
-            image.paste(resized, pos, resized)
-            return emoji_size
+            image.paste(resized, xy, resized)
 
     async def text(
         self,
@@ -122,34 +98,34 @@ class Pilmoji:
         font: FontT,
         fill: ColorT | None = None,
     ) -> None:
-        """简化版的文本渲染方法，支持 Unicode emoji。
+        """Simplified text rendering method with Unicode emoji support.
 
-        这个方法提供了更简单直接的实现，去掉了复杂的排版参数。
-        适合大多数简单场景使用。
+        This method provides a straightforward implementation without complex layout parameters.
+        Suitable for most simple use cases.
 
         Parameters
         ----------
         image: Image.Image
-            要渲染到的图像
+            The image to render onto
         xy: tuple[int, int]
-            渲染位置 (x, y)
+            Rendering position (x, y)
         text: str
-            要渲染的文本（支持单行或多行）
+            The text to render (supports single or multiple lines)
         font: FontT
-            字体
+            The font to use
         fill: ColorT | None
-            文本颜色，默认为黑色
+            Text color, defaults to black
         """
         draw = ImageDraw.Draw(image)
         x, y = xy
 
-        # 解析文本为节点（只识别 Unicode emoji）
+        # Parse text into nodes (Unicode emoji only)
         lines = to_nodes(text)
 
-        # 收集所有需要下载的 Unicode emoji（去重）
+        # Collect all unique Unicode emojis to download
         emoji_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
 
-        # 并发下载所有 emoji
+        # Download all emojis concurrently
         emoji_tasks = [self._get_emoji(emoji) for emoji in emoji_set]
 
         if emoji_tasks:
@@ -158,23 +134,24 @@ class Pilmoji:
         else:
             emoji_map = {}
 
-        # 渲染每一行
+        # Render each line
         font_size = get_font_size(font)
-        line_height = int(font_size * 1.2)  # 行高为字体大小的 1.2 倍
+        line_height = get_font_height(font)
+        y_diff = int((line_height - font_size) / 2)
 
         for line in lines:
             cur_x = x
 
             for node in line:
                 if node.type is NodeType.EMOJI:
-                    stream = emoji_map.get(node.content)
-                    if stream:
-                        cur_x += self._render_emoji(image, (cur_x, y + 2), stream, font_size)
+                    if bytesio := emoji_map.get(node.content):
+                        self._render_emoji(image, (cur_x, y + y_diff), bytesio, font_size)
                     else:
-                        cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
+                        self._render_text(draw, (cur_x, y), node.content, font, fill)
                 else:
-                    # 文本节点或 Discord emoji（作为文本渲染）
-                    cur_x += self._render_text(draw, (cur_x, y), node.content, font, fill)
+                    # Text node or Discord emoji (rendered as text)
+                    self._render_text(draw, (cur_x, y), node.content, font, fill)
+                cur_x += int(font_size)
 
             y += line_height
 
@@ -186,38 +163,38 @@ class Pilmoji:
         font: FontT,
         fill: ColorT | None = None,
     ) -> None:
-        """简化版的文本渲染方法，支持 Unicode emoji 和 Discord emoji。
+        """Simplified text rendering method with Unicode and Discord emoji support.
 
-        这个方法提供了更简单直接的实现，去掉了复杂的排版参数。
-        适合需要渲染 Discord emoji 的场景使用。
+        This method provides a straightforward implementation without complex layout parameters.
+        Suitable for scenarios requiring Discord emoji rendering.
 
         Parameters
         ----------
         image: Image.Image
-            要渲染到的图像
+            The image to render onto
         xy: tuple[int, int]
-            渲染位置 (x, y)
+            Rendering position (x, y)
         text: str
-            要渲染的文本（支持单行或多行）
+            The text to render (supports single or multiple lines)
         font: FontT
-            字体
+            The font to use
         fill: ColorT | None
-            文本颜色，默认为黑色
+            Text color, defaults to black
         """
         draw = ImageDraw.Draw(image)
         x, y = xy
 
-        # 解析文本为节点
+        # Parse text into nodes
         lines = to_nodes(text, False)
 
-        # 收集所有需要下载的 emoji（去重）
+        # Collect all unique emojis to download
         emoji_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
 
         discord_emoji_set = {
             int(node.content) for line in lines for node in line if node.type is NodeType.DISCORD_EMOJI
         }
 
-        # 并发下载所有 emoji
+        # Download all emojis concurrently
         emoji_tasks = [self._get_emoji(emoji) for emoji in emoji_set]
         discord_tasks = [self._get_discord_emoji(eid) for eid in discord_emoji_set]
 
@@ -226,16 +203,17 @@ class Pilmoji:
             emoji_results = results[: len(emoji_tasks)]
             discord_results = results[len(emoji_tasks) :]
 
-            # 建立映射
+            # Build emoji mappings
             emoji_map = dict(zip(emoji_set, emoji_results))
             discord_map = dict(zip(discord_emoji_set, discord_results))
         else:
             emoji_map = {}
             discord_map = {}
 
-        # 渲染每一行
+        # Render each line
         font_size = get_font_size(font)
-        line_height = int(font_size * 1.2)  # 行高为字体大小的 1.2 倍
+        line_height = get_font_height(font)
+        y_diff = int((line_height - font_size) / 2)
 
         for line in lines:
             cur_x = x
@@ -251,21 +229,23 @@ class Pilmoji:
                     if not stream:
                         fallback_text = f"[:{node.content}:]"
 
-                # 渲染 emoji 或文本
+                # Render emoji or text
                 if stream:
-                    cur_x += self._render_emoji(image, (cur_x, y + 2), stream, font_size)
+                    self._render_emoji(image, (cur_x, y + y_diff), stream, font_size)
                 else:
-                    cur_x += self._render_text(draw, (cur_x, y), fallback_text, font, fill)
+                    self._render_text(draw, (cur_x, y), fallback_text, font, fill)
+
+                cur_x += int(font_size)
 
             y += line_height
 
     async def __aenter__(self):
-        if isinstance(self.source, HTTPBasedSource):
-            await self.source.__aenter__()
+        if isinstance(self._source, HTTPBasedSource):
+            await self._source.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback) -> None:
         await self.aclose()
 
     def __repr__(self) -> str:
-        return f"<Pilmoji source={self.source} cache={self._cache}>"
+        return f"<Pilmoji source={self._source} cache={self._cache}>"
