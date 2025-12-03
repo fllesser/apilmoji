@@ -60,18 +60,28 @@ class HTTPBasedSource(BaseSource):
         if enable_discord:
             self._ds_dir.mkdir(parents=True, exist_ok=True)
 
-    async def download(self, url: str) -> bytes:
-        """Downloads the image from the given URL.
+    async def download_streaming(self, url: str, file_path: Path) -> BytesIO:
+        """Downloads the image from the given URL using streaming,
+        writing to both file and BytesIO simultaneously.
 
         Args:
             url (str): The URL to download the image from.
+            file_path (Path): The path to save the file to.
 
         Returns:
-            bytes: The image content.
+            BytesIO: A bytes stream of the downloaded content.
         """
-        response = await self._client.get(url)
-        response.raise_for_status()
-        return response.content
+        async with self._client.stream("GET", url) as response:
+            response.raise_for_status()
+            buffer = BytesIO()
+
+            async with aopen(file_path, "wb") as f:
+                async for chunk in response.aiter_bytes(chunk_size=8192):
+                    await f.write(chunk)
+                    buffer.write(chunk)
+
+            buffer.seek(0)
+            return buffer
 
     async def aclose(self) -> None:
         """Closes the HTTP client."""
@@ -93,10 +103,7 @@ class HTTPBasedSource(BaseSource):
         url = f"https://cdn.discordapp.com/emojis/{file_name}"
 
         try:
-            bytes = await self.download(url)
-            async with aopen(file_path, "wb") as f:
-                await f.write(bytes)
-            return BytesIO(bytes)
+            return await self.download_streaming(url, file_path)
         except HTTPError:
             return None
 
@@ -167,9 +174,6 @@ class EmojiCDNSource(HTTPBasedSource):
         url = f"{self.base_url}/{emoji}?style={self.style}"
 
         try:
-            bytes = await self.download(url)
-            async with aopen(file_path, "wb") as f:
-                await f.write(bytes)
-            return BytesIO(bytes)
+            return await self.download_streaming(url, file_path)
         except HTTPError:
             return None
