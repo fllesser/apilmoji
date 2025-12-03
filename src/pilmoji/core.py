@@ -4,11 +4,12 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 
 from . import helper
-from .helper import FontT, ColorT, NodeType
+from .helper import FontT, NodeType
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
 
 PILImage = Image.Image
 PILDraw = ImageDraw.ImageDraw
+ColorT = int | tuple[int, int, int] | tuple[int, int, int, int] | str
 
 
 class Pilmoji:

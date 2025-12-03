@@ -7,7 +7,7 @@ from PIL import ImageFont
 
 # Type aliases for font and color specifications
 FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
-ColorT = int | tuple[int, int, int] | tuple[int, int, int, int] | str
+
 
 # Build emoji language pack mapping English names to emoji characters
 _EMOJI_LANGUAGE_PACK: dict[str, str] = {
