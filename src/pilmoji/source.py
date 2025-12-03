@@ -89,9 +89,6 @@ class EmojiStyle(str, Enum):
     TWITTER = "twitter"
     FACEBOOK = "facebook"
 
-    def __str__(self) -> str:
-        return self.value
-
 
 class EmojiCDNSource(HTTPBasedSource):
     """A base source that fetches emojis from https://emojicdn.elk.sh/."""
