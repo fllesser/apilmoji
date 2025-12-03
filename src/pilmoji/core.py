@@ -1,5 +1,7 @@
 import asyncio
 from io import BytesIO
+from typing import TypeVar
+from collections.abc import Awaitable
 
 from PIL import Image, ImageDraw
 
@@ -7,6 +9,7 @@ from . import helper
 from .helper import FontT, NodeType
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
 
+T = TypeVar("T")
 PILImage = Image.Image
 PILDraw = ImageDraw.ImageDraw
 ColorT = int | tuple[int, int, int] | tuple[int, int, int, int] | str
@@ -15,18 +18,25 @@ ColorT = int | tuple[int, int, int] | tuple[int, int, int, int] | str
 class Pilmoji:
     """The emoji rendering interface."""
 
-    SIZE_DIFF = 1
-
     def __init__(
         self,
         *,
         source: BaseSource = EmojiCDNSource(),
         cache: bool = True,
+        enable_tqdm: bool = True,
     ) -> None:
         self._cache: bool = cache
         self._source: BaseSource = source
         self._emoji_cache: dict[str, BytesIO] = {}
         self._discord_emoji_cache: dict[int, BytesIO] = {}
+
+        if enable_tqdm:
+            try:
+                from tqdm.asyncio import tqdm
+
+                self.__tqdm = tqdm
+            except ImportError:
+                self.__tqdm = None
 
     async def aclose(self) -> None:
         if isinstance(self._source, HTTPBasedSource):
@@ -54,7 +64,7 @@ class Pilmoji:
         """Resize emoji to fit the font size"""
         bytesio.seek(0)
         with Image.open(bytesio).convert("RGBA") as emoji_img:
-            emoji_size = int(size) - self.SIZE_DIFF
+            emoji_size = int(size) - 1
             aspect_ratio = emoji_img.height / emoji_img.width
             return emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
@@ -110,7 +120,7 @@ class Pilmoji:
         }
 
         # Download all emojis concurrently
-        emjios = await asyncio.gather(
+        emjios = await self.gather(
             *[self._get_emoji(emoji) for emoji in emj_set],
         )
         emj_map = dict(zip(emj_set, emjios))
@@ -196,7 +206,7 @@ class Pilmoji:
         }
 
         # Download all emojis concurrently
-        emjios = await asyncio.gather(
+        emjios = await self.gather(
             *[self._get_emoji(emoji) for emoji in emj_set],
             *[self._get_discord_emoji(eid) for eid in ds_emj_set],
         )
@@ -245,6 +255,17 @@ class Pilmoji:
                     cur_x += int(font.getlength(fallback_text))
 
             y += line_height
+
+    async def gather(self, *tasks: Awaitable[T]) -> list[T]:
+        if self.__tqdm is None:
+            return await asyncio.gather(*tasks)
+
+        return await self.__tqdm.gather(
+            *tasks,
+            desc="Fetching Emojis",
+            colour="green",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}",
+        )
 
     async def __aenter__(self):
         return self
