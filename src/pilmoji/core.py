@@ -1,11 +1,14 @@
 import asyncio
 from io import BytesIO
-from typing import SupportsInt
 
 from PIL import Image, ImageDraw
 
+from . import helper
+from .helper import FontT, ColorT, NodeType
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
-from .helpers import FontT, ColorT, NodeType, to_nodes, get_font_size, get_font_height
+
+PILImage = Image.Image
+PILDraw = ImageDraw.ImageDraw
 
 
 class Pilmoji:
@@ -24,37 +27,22 @@ class Pilmoji:
         self._emoji_cache: dict[str, BytesIO] = {}
         self._discord_emoji_cache: dict[int, BytesIO] = {}
 
-    def close(self) -> None:
-        if self._cache:
-            for stream in self._emoji_cache.values():
-                stream.close()
-
-            for stream in self._discord_emoji_cache.values():
-                stream.close()
-
-            self._emoji_cache = {}
-            self._discord_emoji_cache = {}
-
     async def aclose(self) -> None:
         if isinstance(self._source, HTTPBasedSource):
             await self._source.aclose()
 
     async def _get_emoji(self, emoji: str) -> BytesIO | None:
         if self._cache and emoji in self._emoji_cache:
-            bytesio = self._emoji_cache[emoji]
-            return bytesio
+            return self._emoji_cache[emoji]
 
         if bytesio := await self._source.get_emoji(emoji):
             if self._cache:
                 self._emoji_cache[emoji] = bytesio
             return bytesio
 
-    async def _get_discord_emoji(self, id: SupportsInt) -> BytesIO | None:
-        id = int(id)
-
+    async def _get_discord_emoji(self, id: int) -> BytesIO | None:
         if self._cache and id in self._discord_emoji_cache:
-            bytesio = self._discord_emoji_cache[id]
-            return bytesio
+            return self._discord_emoji_cache[id]
 
         if bytesio := await self._source.get_discord_emoji(id):
             if self._cache:
@@ -63,23 +51,23 @@ class Pilmoji:
 
     def _render_text(
         self,
-        draw: ImageDraw.ImageDraw,
+        draw: PILDraw,
         xy: tuple[int, int],
         content: str,
         font: FontT,
         fill: ColorT | None,
     ):
-        """Render a text node."""
+        """Render text"""
         draw.text(xy, content, font=font, fill=fill)
 
     def _render_emoji(
         self,
-        image: Image.Image,
+        image: PILImage,
         xy: tuple[int, int],
         bytesio: BytesIO,
         size: float,
     ):
-        """Render an emoji node."""
+        """Render emoji"""
         bytesio.seek(0)
         with Image.open(bytesio).convert("RGBA") as emoji_img:
             emoji_size = int(size) - self.SIZE_DIFF
@@ -92,7 +80,7 @@ class Pilmoji:
 
     async def text(
         self,
-        image: Image.Image,
+        image: PILImage,
         xy: tuple[int, int],
         text: str,
         font: FontT,
@@ -116,35 +104,41 @@ class Pilmoji:
         fill: ColorT | None
             Text color, defaults to black
         """
-        draw = ImageDraw.Draw(image)
+        if not text:
+            return
+
         x, y = xy
+        draw = ImageDraw.Draw(image)
+        line_height = helper.get_font_height(font)
+
+        # check text has emoji
+        if not helper.has_emoji(text):
+            for line in text.splitlines():
+                self._render_text(draw, (x, y), line, font, fill)
+                y += line_height
+            return
 
         # Parse text into nodes (Unicode emoji only)
-        lines = to_nodes(text)
+        lines = helper.to_nodes(text)
 
         # Collect all unique Unicode emojis to download
-        emoji_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
+        emj_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
 
         # Download all emojis concurrently
-        emoji_tasks = [self._get_emoji(emoji) for emoji in emoji_set]
-
-        if emoji_tasks:
-            emoji_results = await asyncio.gather(*emoji_tasks)
-            emoji_map = dict(zip(emoji_set, emoji_results))
-        else:
-            emoji_map = {}
+        emjios = await asyncio.gather(
+            *[self._get_emoji(emoji) for emoji in emj_set],
+        )
+        emj_map = dict(zip(emj_set, emjios))
 
         # Render each line
-        font_size = get_font_size(font)
-        line_height = get_font_height(font)
+        font_size = helper.get_font_size(font)
         y_diff = int((line_height - font_size) / 2)
 
         for line in lines:
             cur_x = x
-
             for node in line:
                 if node.type is NodeType.EMOJI:
-                    if bytesio := emoji_map.get(node.content):
+                    if bytesio := emj_map.get(node.content):
                         self._render_emoji(image, (cur_x, y + y_diff), bytesio, font_size)
                     else:
                         self._render_text(draw, (cur_x, y), node.content, font, fill)
@@ -152,7 +146,6 @@ class Pilmoji:
                     # Text node or Discord emoji (rendered as text)
                     self._render_text(draw, (cur_x, y), node.content, font, fill)
                 cur_x += int(font_size)
-
             y += line_height
 
     async def text_with_discord_emoji(
@@ -181,38 +174,41 @@ class Pilmoji:
         fill: ColorT | None
             Text color, defaults to black
         """
-        draw = ImageDraw.Draw(image)
+        if not text:
+            return
+
         x, y = xy
+        draw = ImageDraw.Draw(image)
+        line_height = helper.get_font_height(font)
+
+        if not helper.has_emoji(text, False):
+            for line in text.splitlines():
+                self._render_text(draw, xy, line, font, fill)
+            return
 
         # Parse text into nodes
-        lines = to_nodes(text, False)
+        lines = helper.to_nodes(text, False)
 
         # Collect all unique emojis to download
-        emoji_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
-
-        discord_emoji_set = {
-            int(node.content) for line in lines for node in line if node.type is NodeType.DISCORD_EMOJI
-        }
+        emj_set = {node.content for line in lines for node in line if node.type is NodeType.EMOJI}
+        ds_emj_set = {int(node.content) for line in lines for node in line if node.type is NodeType.DISCORD_EMOJI}
 
         # Download all emojis concurrently
-        emoji_tasks = [self._get_emoji(emoji) for emoji in emoji_set]
-        discord_tasks = [self._get_discord_emoji(eid) for eid in discord_emoji_set]
+        emjios = await asyncio.gather(
+            *[self._get_emoji(emoji) for emoji in emj_set],
+            *[self._get_discord_emoji(eid) for eid in ds_emj_set],
+        )
 
-        if emoji_tasks or discord_tasks:
-            results = await asyncio.gather(*emoji_tasks, *discord_tasks)
-            emoji_results = results[: len(emoji_tasks)]
-            discord_results = results[len(emoji_tasks) :]
+        emj_num = len(emj_set)
+        emoji_results = emjios[:emj_num]
+        discord_results = emjios[emj_num:]
 
-            # Build emoji mappings
-            emoji_map = dict(zip(emoji_set, emoji_results))
-            discord_map = dict(zip(discord_emoji_set, discord_results))
-        else:
-            emoji_map = {}
-            discord_map = {}
+        # Build emoji mappings
+        emj_map = dict(zip(emj_set, emoji_results))
+        ds_emj_map = dict(zip(ds_emj_set, discord_results))
 
         # Render each line
-        font_size = get_font_size(font)
-        line_height = get_font_height(font)
+        font_size = helper.get_font_size(font)
         y_diff = int((line_height - font_size) / 2)
 
         for line in lines:
@@ -223,9 +219,9 @@ class Pilmoji:
                 fallback_text = node.content
 
                 if node.type is NodeType.EMOJI:
-                    stream = emoji_map.get(node.content)
+                    stream = emj_map.get(node.content)
                 elif node.type is NodeType.DISCORD_EMOJI:
-                    stream = discord_map.get(int(node.content))
+                    stream = ds_emj_map.get(int(node.content))
                     if not stream:
                         fallback_text = f"[:{node.content}:]"
 

@@ -37,6 +37,28 @@ class Node(NamedTuple):
     content: str
 
 
+def has_emoji(text: str, unicode_only: bool = True) -> bool:
+    """Check if a string contains any emoji characters.
+
+    Parameters
+    ----------
+    text : str
+        The text to check
+    unicode_only : bool, default=True
+        If True, only match Unicode emojis; if False, also match Discord emojis
+
+    Returns
+    -------
+    bool
+        True if the text contains any emoji characters, False otherwise
+    """
+    return bool(UNICODE_EMOJI_REGEX.search(text)) if unicode_only else bool(EMOJI_REGEX.search(text))
+
+
+def to_nodes(text: str, unicode_only: bool = True):
+    return [_parse_line(line, unicode_only) for line in text.splitlines()]
+
+
 def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
     """Parse a line of text, identifying Unicode emojis and Discord emojis.
 
@@ -78,24 +100,6 @@ def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
         nodes.append(Node(NodeType.TEXT, line[last_end:]))
 
     return nodes
-
-
-def to_nodes(text: str, unicode_only: bool = True) -> list[list[Node]]:
-    """Parse multi-line text into a list of node lists.
-
-    Parameters
-    ----------
-    text : str
-        The text to parse (can contain multiple lines)
-    unicode_only : bool, default=True
-        If True, only match Unicode emojis; if False, also match Discord emojis
-
-    Returns
-    -------
-    list[list[Node]]
-        A list where each element is a list of nodes representing one line
-    """
-    return [_parse_line(line, unicode_only) for line in text.splitlines()]
 
 
 def get_font_size(font: FontT) -> float:
