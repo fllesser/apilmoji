@@ -52,6 +52,9 @@ async def test_text_with_discord_emoji(font_path, cache_dir):
         await pilmoji.text_with_discord_emoji(
             image, (10, 10), COMPLEX_TEXT, font, (0, 0, 0)
         )
+        await pilmoji.text_with_discord_emoji(
+            image, (10, 10), "<:rooThink:596576798351949847>", font, (0, 0, 0)
+        )
         assert image is not None
         image.save(cache_dir / "text_with_discord_emoji.png")
 
@@ -74,3 +77,25 @@ async def test_text_without_context_manager(font_path, cache_dir):
         assert image is not None
     finally:
         await pilmoji.aclose()
+
+
+@pytest.mark.asyncio
+async def test_edge_case(font_path, cache_dir):
+    from PIL import Image, ImageFont
+
+    from pilmoji import Pilmoji, EmojiCDNSource
+
+    font = ImageFont.truetype(font_path, 24)
+    async with Pilmoji(source=EmojiCDNSource(cache_dir=cache_dir)) as pilmoji:
+        image = Image.new("RGB", (300, 200), (255, 255, 255))
+        await pilmoji.text(image, (10, 10), "", font, (0, 0, 0))
+        await pilmoji.text(image, (10, 10), "Hello World!", font, (0, 0, 0))
+
+        image = Image.new("RGB", (300, 200), (255, 255, 255))
+        await pilmoji.text_with_discord_emoji(image, (10, 10), "", font, (0, 0, 0))
+        await pilmoji.text_with_discord_emoji(
+            image, (10, 10), "Hello World!", font, (0, 0, 0)
+        )
+        await pilmoji.text_with_discord_emoji(
+            image, (10, 10), str(pilmoji), font, (0, 0, 0)
+        )
