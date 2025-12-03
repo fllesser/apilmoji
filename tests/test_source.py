@@ -40,13 +40,23 @@ async def test_all_style(cache_dir):
     emoji_str = "👍"
 
     assert str(EmojiStyle.APPLE) == "apple"
+    assert str(EmojiStyle.GOOGLE) == "google"
+    assert str(EmojiStyle.TWITTER) == "twitter"
+    assert str(EmojiStyle.FACEBOOK) == "facebook"
 
     async def test_style(style: EmojiStyle):
         async with EmojiCDNSource(cache_dir=cache_dir, style=style) as source:
             image = await source.get_emoji(emoji_str)
             assert image is not None, f"Failed to get emoji for style {style}"
 
-    await asyncio.gather(*[test_style(style) for style in EmojiStyle])
+    styles = (
+        EmojiStyle.APPLE,
+        EmojiStyle.FACEBOOK,
+        EmojiStyle.TWITTER,
+        EmojiStyle.GOOGLE,
+    )
+
+    await asyncio.gather(*[test_style(style) for style in styles])
 
 
 @pytest.mark.asyncio

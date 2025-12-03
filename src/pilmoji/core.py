@@ -51,6 +51,8 @@ class Pilmoji:
                 self._emoji_cache[emoji] = bytesio
             return bytesio
 
+        return None
+
     async def _get_discord_emoji(self, id: int) -> BytesIO | None:
         if self._cache and id in self._discord_emoji_cache:
             return self._discord_emoji_cache[id]
@@ -59,6 +61,8 @@ class Pilmoji:
             if self._cache:
                 self._discord_emoji_cache[id] = bytesio
             return bytesio
+
+        return None
 
     def _resize_emoji(self, bytesio: BytesIO, size: float) -> PILImage:
         """Resize emoji to fit the font size"""
@@ -237,22 +241,20 @@ class Pilmoji:
 
             for node in line:
                 emoji_img = None
-                fallback_text = node.content
 
-                if node.type is NodeType.EMOJI:
-                    emoji_img = resized_emojis.get(node.content)
-                elif node.type is NodeType.DISCORD_EMOJI:
-                    emoji_img = resized_emojis.get(int(node.content))
-                    if not emoji_img:
-                        fallback_text = f"[:{node.content}:]"
+                match node.type:
+                    case NodeType.EMOJI:
+                        emoji_img = resized_emojis.get(node.content)
+                    case NodeType.DISCORD_EMOJI:
+                        emoji_img = resized_emojis.get(int(node.content))
 
                 # Render emoji or text
                 if emoji_img:
                     image.paste(emoji_img, (cur_x, y + y_diff), emoji_img)
                     cur_x += int(font_size)
                 else:
-                    draw.text((cur_x, y), fallback_text, font=font, fill=fill)
-                    cur_x += int(font.getlength(fallback_text))
+                    draw.text((cur_x, y), node.content, font=font, fill=fill)
+                    cur_x += int(font.getlength(node.content))
 
             y += line_height
 

@@ -151,7 +151,7 @@ MQRIO_DEV_CDN = "https://emoji-cdn.mqrio.dev"
 class EmojiCDNSource(HTTPBasedSource):
     def __init__(
         self,
-        base_url: str = MQRIO_DEV_CDN,
+        base_url: str = ELK_SH_CDN,
         style: EmojiStyle | str = EmojiStyle.APPLE,
         *,
         cache_dir: Path | None = None,
