@@ -1,6 +1,6 @@
 [project]
 name = "pilmoji-for-parser"
-version = "0.1.4"
+version = "0.1.5"
 description = "Pilmoji for nonebot-plugin-parser"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,7 +40,7 @@ module-name = "pilmoji"
 [tool.bumpversion]
 tag = true
 commit = true
-current_version = "0.1.4"
+current_version = "0.1.5"
 message = "release: bump vesion from {current_version} to {new_version}"
 
 [[tool.bumpversion.files]]
