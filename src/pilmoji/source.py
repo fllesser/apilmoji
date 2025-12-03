@@ -103,7 +103,9 @@ class EmojiStyle(str, Enum):
 class EmojiCDNSource(HTTPBasedSource):
     """A base source that fetches emojis from https://emojicdn.elk.sh/."""
 
-    def __init__(self, style: EmojiStyle = EmojiStyle.APPLE, cache_dir: Path | None = None) -> None:
+    def __init__(
+        self, style: EmojiStyle = EmojiStyle.APPLE, cache_dir: Path | None = None
+    ) -> None:
         super().__init__(cache_dir=cache_dir)
         self.style = style.value
         (self.cache_dir / self.style).mkdir(parents=True, exist_ok=True)

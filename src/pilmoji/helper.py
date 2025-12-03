@@ -17,10 +17,14 @@ _EMOJI_LANGUAGE_PACK: dict[str, str] = {
 }
 
 # Regex patterns for matching emojis
-_UNICODE_EMOJI_REGEX = "|".join(map(re.escape, sorted(_EMOJI_LANGUAGE_PACK.values(), key=len, reverse=True)))
+_UNICODE_EMOJI_REGEX = "|".join(
+    map(re.escape, sorted(_EMOJI_LANGUAGE_PACK.values(), key=len, reverse=True))
+)
 _DISCORD_EMOJI_REGEX = r"<a?:[a-zA-Z0-9_]{1,32}:[0-9]{17,22}>"
 
-EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(f"({_UNICODE_EMOJI_REGEX}|{_DISCORD_EMOJI_REGEX})")
+EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(
+    f"({_UNICODE_EMOJI_REGEX}|{_DISCORD_EMOJI_REGEX})"
+)
 UNICODE_EMOJI_REGEX: Final[re.Pattern[str]] = re.compile(_UNICODE_EMOJI_REGEX)
 
 
@@ -35,6 +39,32 @@ class Node(NamedTuple):
 
     type: NodeType
     content: str
+
+
+def has_emoji(text: str, unicode_only: bool = True) -> bool:
+    """Check if a string contains any emoji characters.
+
+    Parameters
+    ----------
+    text : str
+        The text to check
+    unicode_only : bool, default=True
+        If True, only match Unicode emojis; if False, also match Discord emojis
+
+    Returns
+    -------
+    bool
+        True if the text contains any emoji characters, False otherwise
+    """
+    return (
+        bool(UNICODE_EMOJI_REGEX.search(text))
+        if unicode_only
+        else bool(EMOJI_REGEX.search(text))
+    )
+
+
+def to_nodes(text: str, unicode_only: bool = True):
+    return [_parse_line(line, unicode_only) for line in text.splitlines()]
 
 
 def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
@@ -80,24 +110,6 @@ def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
     return nodes
 
 
-def to_nodes(text: str, unicode_only: bool = True) -> list[list[Node]]:
-    """Parse multi-line text into a list of node lists.
-
-    Parameters
-    ----------
-    text : str
-        The text to parse (can contain multiple lines)
-    unicode_only : bool, default=True
-        If True, only match Unicode emojis; if False, also match Discord emojis
-
-    Returns
-    -------
-    list[list[Node]]
-        A list where each element is a list of nodes representing one line
-    """
-    return [_parse_line(line, unicode_only) for line in text.splitlines()]
-
-
 def get_font_size(font: FontT) -> float:
     """Get the size of a font, handling both FreeTypeFont and TransposedFont.
 
@@ -112,7 +124,9 @@ def get_font_size(font: FontT) -> float:
         The font size in points
     """
     if isinstance(font, ImageFont.TransposedFont):
-        assert not isinstance(font.font, ImageFont.ImageFont), "font.font should not be an ImageFont"
+        assert not isinstance(font.font, ImageFont.ImageFont), (
+            "font.font should not be an ImageFont"
+        )
         return font.font.size
     return font.size
 

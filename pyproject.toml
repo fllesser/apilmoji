@@ -55,7 +55,7 @@ exclude_lines = [
   "if TYPE_CHECKING:",
   "@overload",
   "except HTTPError:",
-  "assert not"
+  "assert not",
 ]
 
 [tool.poe.tasks]
@@ -90,7 +90,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
 [tool.ruff]
-line-length = 120
+line-length = 88
 
 [tool.ruff.format]
 line-ending = "lf"
