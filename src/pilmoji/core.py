@@ -1,5 +1,7 @@
 import asyncio
 from io import BytesIO
+from typing import TypeVar
+from collections.abc import Awaitable
 
 from PIL import Image, ImageDraw
 
@@ -7,26 +9,34 @@ from . import helper
 from .helper import FontT, NodeType
 from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
 
+T = TypeVar("T")
 PILImage = Image.Image
 PILDraw = ImageDraw.ImageDraw
-ColorT = int | tuple[int, int, int] | tuple[int, int, int, int] | str
+ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
 class Pilmoji:
     """The emoji rendering interface."""
-
-    SIZE_DIFF = 1
 
     def __init__(
         self,
         *,
         source: BaseSource = EmojiCDNSource(),
         cache: bool = True,
+        enable_tqdm: bool = True,
     ) -> None:
         self._cache: bool = cache
         self._source: BaseSource = source
         self._emoji_cache: dict[str, BytesIO] = {}
         self._discord_emoji_cache: dict[int, BytesIO] = {}
+
+        if enable_tqdm:
+            try:
+                from tqdm.asyncio import tqdm
+
+                self.__tqdm = tqdm
+            except ImportError:
+                self.__tqdm = None
 
     async def aclose(self) -> None:
         if isinstance(self._source, HTTPBasedSource):
@@ -41,6 +51,8 @@ class Pilmoji:
                 self._emoji_cache[emoji] = bytesio
             return bytesio
 
+        return None
+
     async def _get_discord_emoji(self, id: int) -> BytesIO | None:
         if self._cache and id in self._discord_emoji_cache:
             return self._discord_emoji_cache[id]
@@ -50,11 +62,13 @@ class Pilmoji:
                 self._discord_emoji_cache[id] = bytesio
             return bytesio
 
+        return None
+
     def _resize_emoji(self, bytesio: BytesIO, size: float) -> PILImage:
         """Resize emoji to fit the font size"""
         bytesio.seek(0)
         with Image.open(bytesio).convert("RGBA") as emoji_img:
-            emoji_size = int(size) - self.SIZE_DIFF
+            emoji_size = int(size) - 1
             aspect_ratio = emoji_img.height / emoji_img.width
             return emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
@@ -110,7 +124,7 @@ class Pilmoji:
         }
 
         # Download all emojis concurrently
-        emjios = await asyncio.gather(
+        emjios = await self.gather(
             *[self._get_emoji(emoji) for emoji in emj_set],
         )
         emj_map = dict(zip(emj_set, emjios))
@@ -196,7 +210,7 @@ class Pilmoji:
         }
 
         # Download all emojis concurrently
-        emjios = await asyncio.gather(
+        emjios = await self.gather(
             *[self._get_emoji(emoji) for emoji in emj_set],
             *[self._get_discord_emoji(eid) for eid in ds_emj_set],
         )
@@ -227,24 +241,33 @@ class Pilmoji:
 
             for node in line:
                 emoji_img = None
-                fallback_text = node.content
 
-                if node.type is NodeType.EMOJI:
-                    emoji_img = resized_emojis.get(node.content)
-                elif node.type is NodeType.DISCORD_EMOJI:
-                    emoji_img = resized_emojis.get(int(node.content))
-                    if not emoji_img:
-                        fallback_text = f"[:{node.content}:]"
+                match node.type:
+                    case NodeType.EMOJI:
+                        emoji_img = resized_emojis.get(node.content)
+                    case NodeType.DISCORD_EMOJI:
+                        emoji_img = resized_emojis.get(int(node.content))
 
                 # Render emoji or text
                 if emoji_img:
                     image.paste(emoji_img, (cur_x, y + y_diff), emoji_img)
                     cur_x += int(font_size)
                 else:
-                    draw.text((cur_x, y), fallback_text, font=font, fill=fill)
-                    cur_x += int(font.getlength(fallback_text))
+                    draw.text((cur_x, y), node.content, font=font, fill=fill)
+                    cur_x += int(font.getlength(node.content))
 
             y += line_height
+
+    async def gather(self, *tasks: Awaitable[T]) -> list[T]:
+        if self.__tqdm is None:
+            return await asyncio.gather(*tasks)
+
+        return await self.__tqdm.gather(
+            *tasks,
+            desc="Fetching Emojis",
+            colour="green",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}",
+        )
 
     async def __aenter__(self):
         return self
