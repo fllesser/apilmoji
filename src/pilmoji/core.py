@@ -138,6 +138,7 @@ class Pilmoji:
 
         for line in lines:
             cur_x = x
+
             for node in line:
                 if node.type is NodeType.EMOJI:
                     if bytesio := emj_map.get(node.content):
@@ -146,10 +147,12 @@ class Pilmoji:
                         )
                     else:
                         self._render_text(draw, (cur_x, y), node.content, font, fill)
+                    cur_x += int(font_size)
                 else:
-                    # Text node or Discord emoji (rendered as text)
+                    # Text node
                     self._render_text(draw, (cur_x, y), node.content, font, fill)
-                cur_x += int(font_size)
+                    cur_x += int(font.getlength(node.content))
+
             y += line_height
 
     async def text_with_discord_emoji(
@@ -239,10 +242,10 @@ class Pilmoji:
                 # Render emoji or text
                 if stream:
                     self._render_emoji(image, (cur_x, y + y_diff), stream, font_size)
+                    cur_x += int(font_size)
                 else:
                     self._render_text(draw, (cur_x, y), fallback_text, font, fill)
-
-                cur_x += int(font_size)
+                    cur_x += int(font.getlength(fallback_text))
 
             y += line_height
 
