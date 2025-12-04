@@ -80,7 +80,7 @@ class Pilmoji:
         self,
         image: PILImage,
         xy: tuple[int, int],
-        text: str,
+        lines: list[str],
         font: FontT,
         *,
         fill: ColorT | None = None,
@@ -95,7 +95,7 @@ class Pilmoji:
             The image to render onto
         xy: tuple[int, int]
             Rendering position (x, y)
-        text: str
+        text: str | list[str]
             The text to render (supports single or multiple lines)
         font: FontT
             The font to use
@@ -106,27 +106,26 @@ class Pilmoji:
         support_discord_emoji: bool
             Whether to support Discord emoji parsing, defaults to False
         """
-        if not text:
+        if not lines:
             return
 
         x, y = xy
         draw = ImageDraw.Draw(image)
         line_height = line_height or helper.get_font_height(font)
 
-        # Check if text has emoji
-        if not helper.contains_emoji(text, support_ds_emj):
-            for line in text.splitlines():
+        # Check if lines has emoji
+        if not helper.contains_emoji(lines, support_ds_emj):
+            for line in lines:
                 draw.text((x, y), line, font=font, fill=fill)
                 y += line_height
             return
-
-        # Parse text into nodes
-        lines = helper.to_nodes(text, support_ds_emj)
+        # Parse lines into nodes
+        nodes_lst = helper.to_nodes(lines, support_ds_emj)
 
         # Collect all unique emojis to download
         emj_set = {
             node.content
-            for line in lines
+            for line in nodes_lst
             for node in line
             if node.type is NodeType.EMOJI
         }
@@ -136,7 +135,7 @@ class Pilmoji:
         if support_ds_emj:
             ds_emj_set = {
                 int(node.content)
-                for line in lines
+                for line in nodes_lst
                 for node in line
                 if node.type is NodeType.DISCORD_EMOJI
             }
@@ -173,7 +172,7 @@ class Pilmoji:
                 if bytesio
             }
 
-        for line in lines:
+        for line in nodes_lst:
             cur_x = x
 
             for node in line:

@@ -41,12 +41,11 @@ class Node(NamedTuple):
     content: str
 
 
-def contains_emoji(text: str, support_ds_emj: bool = False) -> bool:
+def contains_emoji(lines: list[str], support_ds_emj: bool = False) -> bool:
     """Check if a string contains any emoji characters using a fast regex pattern.
-
     Parameters
     ----------
-    text : str
+    text : str | list[str]
         The text to check
     unicode_only : bool, default=True
         If True, only match Unicode emojis; if False, also match Discord emojis
@@ -56,15 +55,16 @@ def contains_emoji(text: str, support_ds_emj: bool = False) -> bool:
     bool
         True if the text contains any emoji characters, False otherwise
     """
-    for char in text:
-        if char in UNICODE_EMOJI_SET:
-            return True
+    for line in lines:
+        for char in line:
+            if char in UNICODE_EMOJI_SET:
+                return True
 
-    return support_ds_emj and bool(DISCORD_EMOJI_PATTERN.search(text))
+    return support_ds_emj and bool(DISCORD_EMOJI_PATTERN.search("\n".join(lines)))
 
 
-def to_nodes(text: str, support_ds_emj: bool = False) -> list[list[Node]]:
-    return [_parse_line(line, support_ds_emj) for line in text.splitlines()]
+def to_nodes(lines: list[str], support_ds_emj: bool = False) -> list[list[Node]]:
+    return [_parse_line(line, support_ds_emj) for line in lines]
 
 
 def _parse_line(line: str, support_ds_emj: bool = False) -> list[Node]:
