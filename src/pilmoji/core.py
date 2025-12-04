@@ -69,7 +69,7 @@ class Pilmoji:
         """Resize emoji to fit the font size"""
         bytesio.seek(0)
         with Image.open(bytesio).convert("RGBA") as emoji_img:
-            emoji_size = int(size) - 1
+            emoji_size = int(size) - 2
             aspect_ratio = emoji_img.height / emoji_img.width
             return emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
@@ -185,7 +185,7 @@ class Pilmoji:
 
                 # Render emoji or text
                 if emj_img is not None:
-                    image.paste(emj_img, (cur_x, y + y_diff), emj_img)
+                    image.paste(emj_img, (cur_x + 1, y + y_diff), emj_img)
                     cur_x += int(font_size)
                 else:
                     draw.text((cur_x, y), node.content, font=font, fill=fill)
