@@ -3,16 +3,14 @@ from enum import Enum
 from typing import Final, NamedTuple
 
 from PIL import ImageFont
-from emoji import STATUS, EMOJI_DATA
+from emoji import EMOJI_DATA
 
 # Type aliases for font and color specifications
 FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
 
 # Build emoji language pack mapping English names to emoji characters
 UNICODE_EMOJI_SET: Final[set[str]] = {
-    emj
-    for emj, data in EMOJI_DATA.items()
-    if data["status"] <= STATUS["fully_qualified"]
+    emj for emj, data in EMOJI_DATA.items() if data["status"] <= 2
 }
 
 # Regex patterns for matching emojis
@@ -20,7 +18,6 @@ _UNICODE_EMOJI_REGEX: Final[str] = "|".join(
     map(re.escape, sorted(UNICODE_EMOJI_SET, key=len, reverse=True))
 )
 _DISCORD_EMOJI_REGEX: Final[str] = r"<a?:[a-zA-Z0-9_]{1,32}:[0-9]{17,22}>"
-
 
 UNICODE_EMOJI_PATTERN: Final[re.Pattern[str]] = re.compile(_UNICODE_EMOJI_REGEX)
 DISCORD_EMOJI_PATTERN: Final[re.Pattern[str]] = re.compile(_DISCORD_EMOJI_REGEX)
@@ -42,12 +39,11 @@ class Node(NamedTuple):
     content: str
 
 
-def has_emoji(text: str, unicode_only: bool = True) -> bool:
+def contains_emoji(lines: list[str], support_ds_emj: bool = False) -> bool:
     """Check if a string contains any emoji characters using a fast regex pattern.
-
     Parameters
     ----------
-    text : str
+    text : str | list[str]
         The text to check
     unicode_only : bool, default=True
         If True, only match Unicode emojis; if False, also match Discord emojis
@@ -57,21 +53,19 @@ def has_emoji(text: str, unicode_only: bool = True) -> bool:
     bool
         True if the text contains any emoji characters, False otherwise
     """
-    for char in text:
-        if char in UNICODE_EMOJI_SET:
-            return True
+    for line in lines:
+        for char in line:
+            if char in UNICODE_EMOJI_SET:
+                return True
 
-    if unicode_only:
-        return False
-
-    return bool(DISCORD_EMOJI_PATTERN.search(text))
+    return support_ds_emj and bool(DISCORD_EMOJI_PATTERN.search("\n".join(lines)))
 
 
-def to_nodes(text: str, unicode_only: bool = True):
-    return [_parse_line(line, unicode_only) for line in text.splitlines()]
+def to_nodes(lines: list[str], support_ds_emj: bool = False) -> list[list[Node]]:
+    return [_parse_line(line, support_ds_emj) for line in lines]
 
 
-def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
+def _parse_line(line: str, support_ds_emj: bool = False) -> list[Node]:
     """Parse a line of text, identifying Unicode emojis and Discord emojis.
 
     Parameters
@@ -88,7 +82,7 @@ def _parse_line(line: str, unicode_only: bool = True) -> list[Node]:
     """
     last_end = 0
     nodes: list[Node] = []
-    pattern = UNICODE_EMOJI_PATTERN if unicode_only else EMOJI_PATTERN
+    pattern = EMOJI_PATTERN if support_ds_emj else UNICODE_EMOJI_PATTERN
 
     for match in pattern.finditer(line):
         start, end = match.span()
