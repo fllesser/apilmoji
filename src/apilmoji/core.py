@@ -134,7 +134,7 @@ class Pilmoji:
         # Download all emojis concurrently with shared client
         async with AsyncClient(
             headers=HEADERS,
-            timeout=Timeout(connect=5.0, read=15.0),
+            timeout=Timeout(connect=5.0, read=15.0, write=5.0, pool=15),
         ) as client:
             token = client_cv.set(client)
             try:
