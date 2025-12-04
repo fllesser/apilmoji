@@ -10,7 +10,9 @@ FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
 
 # Build emoji language pack mapping English names to emoji characters
 UNICODE_EMOJI_SET: Final[set[str]] = {
-    emj for emj, data in EMOJI_DATA.items() if data["status"] <= STATUS["unqualified"]
+    emj
+    for emj, data in EMOJI_DATA.items()
+    if data["status"] <= STATUS["minimally_qualified"]
 }
 
 # Regex patterns for matching emojis
