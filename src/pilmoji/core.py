@@ -150,7 +150,7 @@ class Pilmoji:
         # Build emoji mappings
         emj_num = len(emj_set)
         emj_map = dict(zip(emj_set, emjios[:emj_num]))
-        ds_emj_map = {}
+        ds_emj_map: dict[int, BytesIO | None] = {}
         if support_ds_emj:
             ds_emj_map = dict(zip(ds_emj_set, emjios[emj_num:]))
 
