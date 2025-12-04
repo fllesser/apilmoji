@@ -30,6 +30,7 @@ class Pilmoji:
         self._cache: bool = cache
         self._source: BaseSource = source
         self._emoji_cache: dict[str, BytesIO] = {}
+        self._max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
 
         self.__tqdm = None
@@ -139,7 +140,10 @@ class Pilmoji:
         async with AsyncClient(
             headers=HEADERS,
             timeout=Timeout(connect=5, read=20, write=15, pool=15),
-            limits=Limits(max_connections=200, max_keepalive_connections=100),
+            limits=Limits(
+                max_connections=self._max_concurrent + 10,
+                max_keepalive_connections=self._max_concurrent,
+            ),
         ) as client:
             token = client_cv.set(client)
             try:
