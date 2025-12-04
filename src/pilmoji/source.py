@@ -26,7 +26,7 @@ class BaseSource(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def get_discord_emoji(self, id: int) -> BytesIO | None:
+    async def get_discord_emoji(self, id: str) -> BytesIO | None:
         """Get the image of the Discord emoji with the given ID.
 
         Args:
@@ -93,7 +93,7 @@ class HTTPBasedSource(BaseSource):
     async def __aexit__(self, exc_type, exc, tb):
         await self.aclose()
 
-    async def get_discord_emoji(self, id: int) -> BytesIO | None:
+    async def get_discord_emoji(self, id: str) -> BytesIO | None:
         file_name = f"{id}.png"
         file_path = self._ds_dir / file_name
         if file_path.exists():

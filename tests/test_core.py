@@ -23,9 +23,7 @@ async def test_pilmoji(font_path, cache_dir):
     ):
         image = Image.new("RGB", (300, 200), (255, 255, 255))
         for y in range(10, 170, 30):
-            await pilmoji.text(
-                image, (10, y), ["Hello 👍 world 😎"], font, fill=(0, 0, 0)
-            )
+            await pilmoji.text(image, (10, y), ["Hello👍world😎"], font, fill=(0, 0, 0))
 
         assert image is not None
         image.save(cache_dir / "test_pilmoji.png")
@@ -93,9 +91,7 @@ async def test_text_without_context_manager(font_path, cache_dir):
     try:
         image = Image.new("RGB", (300, 200), (255, 255, 255))
         for y in range(10, 170, 30):
-            await pilmoji.text(
-                image, (10, y), ["Hello 👍 world 😎"], font, fill=(0, 0, 0)
-            )
+            await pilmoji.text(image, (10, y), ["Hello👍world😎"], font, fill=(0, 0, 0))
 
         assert image is not None
     finally:

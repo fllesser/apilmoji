@@ -28,7 +28,6 @@ class Pilmoji:
         self._cache: bool = cache
         self._source: BaseSource = source
         self._emoji_cache: dict[str, BytesIO] = {}
-        self._discord_emoji_cache: dict[int, BytesIO] = {}
 
         self.__tqdm = None
         if enable_tqdm:
@@ -54,13 +53,13 @@ class Pilmoji:
 
         return None
 
-    async def _get_discord_emoji(self, id: int) -> BytesIO | None:
-        if self._cache and id in self._discord_emoji_cache:
-            return self._discord_emoji_cache[id]
+    async def _get_discord_emoji(self, id: str) -> BytesIO | None:
+        if self._cache and id in self._emoji_cache:
+            return self._emoji_cache[id]
 
         if bytesio := await self._source.get_discord_emoji(id):
             if self._cache:
-                self._discord_emoji_cache[id] = bytesio
+                self._emoji_cache[id] = bytesio
             return bytesio
 
         return None
@@ -131,10 +130,10 @@ class Pilmoji:
         }
 
         # Collect Discord emojis if needed
-        ds_emj_set: set[int] = set()
+        ds_emj_set: set[str] = set()
         if support_ds_emj:
             ds_emj_set = {
-                int(node.content)
+                node.content
                 for line in nodes_lst
                 for node in line
                 if node.type is NodeType.DISCORD_EMOJI
@@ -150,9 +149,8 @@ class Pilmoji:
         # Build emoji mappings
         emj_num = len(emj_set)
         emj_map = dict(zip(emj_set, emjios[:emj_num]))
-        ds_emj_map: dict[int, BytesIO | None] = {}
         if support_ds_emj:
-            ds_emj_map = dict(zip(ds_emj_set, emjios[emj_num:]))
+            emj_map.update(zip(ds_emj_set, emjios[emj_num:]))
 
         # Render each line
         font_size = helper.get_font_size(font)
@@ -164,22 +162,13 @@ class Pilmoji:
             for emoji, bytesio in emj_map.items()
             if bytesio
         }
-        resized_ds_emjs: dict[int, PILImage] = {}
-        if support_ds_emj:
-            resized_ds_emjs = {
-                eid: self._resize_emoji(bytesio, font_size)
-                for eid, bytesio in ds_emj_map.items()
-                if bytesio
-            }
 
         for line in nodes_lst:
             cur_x = x
 
             for node in line:
-                if node.type is NodeType.EMOJI:
+                if node.type is NodeType.EMOJI or node.type is NodeType.DISCORD_EMOJI:
                     emj_img = resized_emjs.get(node.content)
-                elif support_ds_emj and node.type is NodeType.DISCORD_EMOJI:
-                    emj_img = resized_ds_emjs.get(int(node.content))
                 else:
                     emj_img = None
 
