@@ -1,6 +1,6 @@
 from io import BytesIO
 from enum import Enum
-from asyncio import Semaphore, gather
+from asyncio import Semaphore, gather, create_task
 from pathlib import Path
 from collections.abc import Awaitable
 
@@ -168,7 +168,12 @@ class EmojiCDNSource:
         if self.__tqdm is None:
             return await gather(*tasks)
 
-        return await self.__tqdm.gather(*tasks, desc="Fetching Emojis", colour="green")
+        return await self.__tqdm.gather(
+            *tasks,
+            desc="Fetching Emojis",
+            colour="green",
+            dynamic_ncols=True,
+        )
 
     async def fetch_emojis(
         self,
@@ -201,11 +206,12 @@ class EmojiCDNSource:
         ) as client:
             # Create download tasks using the same list order
             tasks = [
-                self._fetch_with_semaphore(emoji, False, client) for emoji in emoji_list
+                create_task(self._fetch_with_semaphore(emoji, False, client))
+                for emoji in emoji_list
             ]
             tasks.extend(
                 [
-                    self._fetch_with_semaphore(eid, True, client)
+                    create_task(self._fetch_with_semaphore(eid, True, client))
                     for eid in discord_emoji_list
                 ]
             )
