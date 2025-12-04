@@ -4,7 +4,7 @@ from typing import TypeVar
 from collections.abc import Awaitable
 
 from PIL import Image, ImageDraw
-from httpx import Timeout, AsyncClient
+from httpx import AsyncClient
 
 from . import helper
 from .helper import FontT, NodeType
@@ -132,10 +132,7 @@ class Pilmoji:
             }
 
         # Download all emojis concurrently with shared client
-        async with AsyncClient(
-            headers=HEADERS,
-            timeout=Timeout(connect=5.0, read=15.0, write=15.0, pool=15),
-        ) as client:
+        async with AsyncClient(headers=HEADERS) as client:
             token = client_cv.set(client)
             try:
                 tasks = [self._fetch_emoji(emoji) for emoji in emj_set]
