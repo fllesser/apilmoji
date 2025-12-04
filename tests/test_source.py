@@ -1,41 +1,59 @@
 import pytest
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
 async def test_get_emoji_from_cdn(cache_dir):
+    from httpx import AsyncClient
+
     from pilmoji import EmojiCDNSource
+    from pilmoji.source import client_cv
 
     emoji_str = "👍 😎 😊 😍 😘 😗 😙 😚 😋"
     emoji_list = emoji_str.split(" ")
 
-    async with EmojiCDNSource(cache_dir=cache_dir) as source:
-        for emoji in emoji_list:
-            image = await source.get_emoji(emoji)
-            assert image is not None
-        # test cache
-        for emoji in emoji_list:
-            image = await source.get_emoji(emoji)
-            assert image is not None
+    source = EmojiCDNSource(cache_dir=cache_dir)
+    async with AsyncClient() as client:
+        token = client_cv.set(client)
+        try:
+            for emoji in emoji_list:
+                image = await source.get_emoji(emoji)
+                assert image is not None
+            # test cache
+            for emoji in emoji_list:
+                image = await source.get_emoji(emoji)
+                assert image is not None
+        finally:
+            client_cv.reset(token)
 
 
 @pytest.mark.asyncio
 async def test_get_discord_emoji_from_cdn(cache_dir):
     from pilmoji import EmojiCDNSource
+    from pilmoji.source import client_cv
 
-    discord_emoji_id = 596576798351949847
-    async with EmojiCDNSource(cache_dir=cache_dir) as source:
-        image = await source.get_discord_emoji(discord_emoji_id)
-        assert image is not None
-        # test cache
-        image = await source.get_discord_emoji(discord_emoji_id)
-        assert image is not None
+    discord_emoji_id = "596576798351949847"
+    source = EmojiCDNSource(cache_dir=cache_dir)
+    async with AsyncClient() as client:
+        token = client_cv.set(client)
+        try:
+            image = await source.get_discord_emoji(discord_emoji_id)
+            assert image is not None
+            # test cache
+            image = await source.get_discord_emoji(discord_emoji_id)
+            assert image is not None
+        finally:
+            client_cv.reset(token)
 
 
 @pytest.mark.asyncio
 async def test_all_style(cache_dir):
     import asyncio
 
+    from httpx import AsyncClient
+
     from pilmoji import EmojiStyle, EmojiCDNSource
+    from pilmoji.source import client_cv
 
     emoji_str = "👍"
 
@@ -45,9 +63,14 @@ async def test_all_style(cache_dir):
     assert str(EmojiStyle.FACEBOOK) == "facebook"
 
     async def test_style(style: EmojiStyle):
-        async with EmojiCDNSource(cache_dir=cache_dir, style=style) as source:
-            image = await source.get_emoji(emoji_str)
-            assert image is not None, f"Failed to get emoji for style {style}"
+        source = EmojiCDNSource(cache_dir=cache_dir, style=style)
+        async with AsyncClient() as client:
+            token = client_cv.set(client)
+            try:
+                image = await source.get_emoji(emoji_str)
+                assert image is not None, f"Failed to get emoji for style {style}"
+            finally:
+                client_cv.reset(token)
 
     styles = (
         EmojiStyle.APPLE,
@@ -57,16 +80,3 @@ async def test_all_style(cache_dir):
     )
 
     await asyncio.gather(*[test_style(style) for style in styles])
-
-
-@pytest.mark.asyncio
-async def test_source_without_context_manager(cache_dir):
-    from pilmoji import EmojiCDNSource
-
-    source = EmojiCDNSource(cache_dir=cache_dir)
-
-    try:
-        image = await source.get_emoji("👍")
-        assert image is not None
-    finally:
-        await source.aclose()

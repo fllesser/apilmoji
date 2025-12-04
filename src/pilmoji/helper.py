@@ -8,6 +8,7 @@ from emoji import EMOJI_DATA
 # Type aliases for font and color specifications
 FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
 
+
 # Build emoji language pack mapping English names to emoji characters
 UNICODE_EMOJI_SET: Final[set[str]] = {
     emj for emj, data in EMOJI_DATA.items() if data["status"] <= 2
@@ -61,7 +62,7 @@ def contains_emoji(lines: list[str], support_ds_emj: bool = False) -> bool:
     return support_ds_emj and bool(DISCORD_EMOJI_PATTERN.search("\n".join(lines)))
 
 
-def to_nodes(lines: list[str], support_ds_emj: bool = False) -> list[list[Node]]:
+def parse_lines(lines: list[str], support_ds_emj: bool = False) -> list[list[Node]]:
     return [_parse_line(line, support_ds_emj) for line in lines]
 
 

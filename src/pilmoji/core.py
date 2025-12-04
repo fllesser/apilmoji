@@ -4,10 +4,11 @@ from typing import TypeVar
 from collections.abc import Awaitable
 
 from PIL import Image, ImageDraw
+from httpx import AsyncClient
 
 from . import helper
 from .helper import FontT, NodeType
-from .source import BaseSource, EmojiCDNSource, HTTPBasedSource
+from .source import BaseSource, EmojiCDNSource, client_cv
 
 T = TypeVar("T")
 PILImage = Image.Image
@@ -38,31 +39,21 @@ class Pilmoji:
             except ImportError:
                 pass
 
-    async def aclose(self) -> None:
-        if isinstance(self._source, HTTPBasedSource):
-            await self._source.aclose()
+    async def _fetch_emoji(self, key: str, is_discord: bool = False) -> BytesIO | None:
+        """Generic fetch function with caching support."""
+        if self._cache and key in self._emoji_cache:
+            return self._emoji_cache[key]
 
-    async def _get_emoji(self, emoji: str) -> BytesIO | None:
-        if self._cache and emoji in self._emoji_cache:
-            return self._emoji_cache[emoji]
+        # Call appropriate source method
+        if is_discord:
+            bytesio = await self._source.get_discord_emoji(key)
+        else:
+            bytesio = await self._source.get_emoji(key)
 
-        if bytesio := await self._source.get_emoji(emoji):
-            if self._cache:
-                self._emoji_cache[emoji] = bytesio
-            return bytesio
+        if bytesio and self._cache:
+            self._emoji_cache[key] = bytesio
 
-        return None
-
-    async def _get_discord_emoji(self, id: str) -> BytesIO | None:
-        if self._cache and id in self._emoji_cache:
-            return self._emoji_cache[id]
-
-        if bytesio := await self._source.get_discord_emoji(id):
-            if self._cache:
-                self._emoji_cache[id] = bytesio
-            return bytesio
-
-        return None
+        return bytesio
 
     def _resize_emoji(self, bytesio: BytesIO, size: float) -> PILImage:
         """Resize emoji to fit the font size"""
@@ -118,8 +109,9 @@ class Pilmoji:
                 draw.text((x, y), line, font=font, fill=fill)
                 y += line_height
             return
+
         # Parse lines into nodes
-        nodes_lst = helper.to_nodes(lines, support_ds_emj)
+        nodes_lst = helper.parse_lines(lines, support_ds_emj)
 
         # Collect all unique emojis to download
         emj_set = {
@@ -139,12 +131,17 @@ class Pilmoji:
                 if node.type is NodeType.DISCORD_EMOJI
             }
 
-        # Download all emojis concurrently
-        tasks = [self._get_emoji(emoji) for emoji in emj_set]
-        if support_ds_emj:
-            tasks.extend([self._get_discord_emoji(eid) for eid in ds_emj_set])
+        # Download all emojis concurrently with shared client
+        async with AsyncClient() as client:
+            token = client_cv.set(client)
+            try:
+                tasks = [self._fetch_emoji(emoji) for emoji in emj_set]
+                if support_ds_emj:
+                    tasks.extend([self._fetch_emoji(eid, True) for eid in ds_emj_set])
 
-        emjios = await self._gather(*tasks)
+                emjios = await self._gather(*tasks)
+            finally:
+                client_cv.reset(token)
 
         # Build emoji mappings
         emj_num = len(emj_set)
@@ -192,12 +189,6 @@ class Pilmoji:
             colour="green",
             bar_format="{desc} |{bar}| {n_fmt}/{total_fmt}",
         )
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        await self.aclose()
 
     def __repr__(self) -> str:
         return f"<Pilmoji source={self._source} cache={self._cache}>"

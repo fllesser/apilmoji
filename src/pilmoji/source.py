@@ -2,9 +2,13 @@ from io import BytesIO
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
+from contextvars import ContextVar
 
-from httpx import HTTPError, AsyncClient
+from httpx import Response, HTTPError, AsyncClient
 from aiofiles import open as aopen
+
+# Context variable for sharing AsyncClient
+client_cv: ContextVar[AsyncClient | None] = ContextVar("source_client", default=None)
 
 
 class BaseSource(ABC):
@@ -53,8 +57,6 @@ class HTTPBasedSource(BaseSource):
         enable_discord: bool = False,
     ):
         self._cache_dir: Path = cache_dir or (Path.home() / ".cache" / "pilmoji")
-        self._client = AsyncClient(headers={"User-Agent": "Mozilla/5.0"})
-
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._ds_dir = self._cache_dir / "discord"
         if enable_discord:
@@ -67,31 +69,31 @@ class HTTPBasedSource(BaseSource):
         Args:
             url (str): The URL to download the image from.
             file_path (Path): The path to save the file to.
+            client (AsyncClient): The HTTP client to use for downloading.
 
         Returns:
             BytesIO: A bytes stream of the downloaded content.
         """
-        async with self._client.stream("GET", url) as response:
-            response.raise_for_status()
-            buffer = BytesIO()
+        if client := client_cv.get():
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                return await self._process_response(response, file_path)
 
-            async with aopen(file_path, "wb") as f:
-                async for chunk in response.aiter_bytes(chunk_size=8192):
-                    await f.write(chunk)
-                    buffer.write(chunk)
+        async with AsyncClient(headers={"User-Agent": "Mozilla/5.0"}) as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                return await self._process_response(response, file_path)
 
-            buffer.seek(0)
-            return buffer
+    async def _process_response(self, response: Response, file_path: Path) -> BytesIO:
+        buffer = BytesIO()
 
-    async def aclose(self) -> None:
-        """Closes the HTTP client."""
-        await self._client.aclose()
+        async with aopen(file_path, "wb") as f:
+            async for chunk in response.aiter_bytes(chunk_size=8192):
+                await f.write(chunk)
+                buffer.write(chunk)
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        await self.aclose()
+        buffer.seek(0)
+        return buffer
 
     async def get_discord_emoji(self, id: str) -> BytesIO | None:
         file_name = f"{id}.png"
