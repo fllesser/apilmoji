@@ -4,7 +4,7 @@ from typing import TypeVar
 from collections.abc import Awaitable
 
 from PIL import Image, ImageDraw
-from httpx import AsyncClient
+from httpx import Limits, Timeout, AsyncClient
 
 from . import helper
 from .helper import FontT, NodeType
@@ -25,10 +25,12 @@ class Pilmoji:
         source: BaseSource = EmojiCDNSource(),
         cache: bool = True,
         enable_tqdm: bool = False,
+        max_concurrent: int = 50,
     ) -> None:
         self._cache: bool = cache
         self._source: BaseSource = source
         self._emoji_cache: dict[str, BytesIO] = {}
+        self._semaphore = asyncio.Semaphore(max_concurrent)
 
         self.__tqdm = None
         if enable_tqdm:
@@ -44,16 +46,18 @@ class Pilmoji:
         if self._cache and key in self._emoji_cache:
             return self._emoji_cache[key]
 
-        # Call appropriate source method
-        if is_discord:
-            bytesio = await self._source.get_discord_emoji(key)
-        else:
-            bytesio = await self._source.get_emoji(key)
+        # Use semaphore to limit concurrent downloads
+        async with self._semaphore:
+            # Call appropriate source method
+            if is_discord:
+                bytesio = await self._source.get_discord_emoji(key)
+            else:
+                bytesio = await self._source.get_emoji(key)
 
-        if bytesio and self._cache:
-            self._emoji_cache[key] = bytesio
+            if bytesio and self._cache:
+                self._emoji_cache[key] = bytesio
 
-        return bytesio
+            return bytesio
 
     def _resize_emoji(self, bytesio: BytesIO, size: float) -> PILImage:
         """Resize emoji to fit the font size"""
@@ -132,7 +136,11 @@ class Pilmoji:
             }
 
         # Download all emojis concurrently with shared client
-        async with AsyncClient(headers=HEADERS) as client:
+        async with AsyncClient(
+            headers=HEADERS,
+            timeout=Timeout(connect=5, read=20, write=15, pool=15),
+            limits=Limits(max_connections=200, max_keepalive_connections=100),
+        ) as client:
             token = client_cv.set(client)
             try:
                 tasks = [self._fetch_emoji(emoji) for emoji in emj_set]
