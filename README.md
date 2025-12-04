@@ -17,14 +17,14 @@ A simplified emoji renderer for [Pillow](https://github.com/python-pillow/Pillow
 **Requirements:** Python 3.10 or higher
 
 ```bash
-pip install pilmoji-for-parser
+pip install apilmoji
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/fllesser/pilmoji-for-parser.git
-cd pilmoji-for-parser
+git clone https://github.com/fllesser/apilmoji.git
+cd apilmoji
 pip install .
 ```
 
@@ -39,19 +39,19 @@ from PIL import Image, ImageFont
 
 async def main():
     text = '''
-    Hello, world! 👋 
+    Hello, world! 👋
     Here are some emojis: 🎨 🌊 😎
     Multi-line support! 🚀 ✨
     '''
-    
+
     # Create image
     image = Image.new('RGB', (550, 150), (255, 255, 255))
     font = ImageFont.truetype('arial.ttf', 24)
-    
+
     # Render text with emojis
     async with Pilmoji() as pilmoji:
         await pilmoji.text(image, (10, 10), text.strip(), font, fill=(0, 0, 0))
-    
+
     image.save('output.png')
     image.show()
 
@@ -66,15 +66,15 @@ async def main():
     Unicode emoji: 👋 🎨 😎
     Discord emoji: <:custom:123456789012345678>
     '''
-    
+
     image = Image.new('RGB', (550, 100), (255, 255, 255))
     font = ImageFont.truetype('arial.ttf', 24)
-    
+
     async with Pilmoji() as pilmoji:
         await pilmoji.text_with_discord_emoji(
             image, (10, 10), text.strip(), font, fill=(0, 0, 0)
         )
-    
+
     image.save('output.png')
 
 asyncio.run(main())
@@ -110,6 +110,7 @@ async with Pilmoji(source=source) as pilmoji:
 Main class for rendering text with emojis.
 
 **Constructor:**
+
 ```python
 Pilmoji(
     source: BaseSource = EmojiCDNSource(),
@@ -118,6 +119,7 @@ Pilmoji(
 ```
 
 **Parameters:**
+
 - `source`: Emoji source to use (default: `EmojiCDNSource()`)
 - `cache`: Enable emoji caching (default: `True`)
 
@@ -144,6 +146,7 @@ Parameters are the same as `text()`.
 Default emoji source using [emojicdn.elk.sh](https://emojicdn.elk.sh/).
 
 **Constructor:**
+
 ```python
 EmojiCDNSource(
     style: EmojiStyle = EmojiStyle.APPLE,
@@ -152,6 +155,7 @@ EmojiCDNSource(
 ```
 
 **Parameters:**
+
 - `style`: Emoji style to use (Apple, Google, Twitter, Facebook)
 - `cache_dir`: Custom cache directory (default: `~/.cache/pilmoji`)
 
@@ -167,7 +171,7 @@ class CustomEmojiSource(BaseSource):
     async def get_emoji(self, emoji: str) -> BytesIO | None:
         # Your custom emoji fetching logic
         pass
-    
+
     async def get_discord_emoji(self, id: int) -> BytesIO | None:
         # Your custom Discord emoji fetching logic
         pass
@@ -216,8 +220,8 @@ await pilmoji.aclose()  # Don't forget to close!
 
 ```bash
 # Clone the repository
-git clone https://github.com/fllesser/pilmoji-for-parser.git
-cd pilmoji-for-parser
+git clone https://github.com/fllesser/apilmoji.git
+cd apilmoji
 
 # Install dependencies
 uv sync --dev
@@ -251,7 +255,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Repository:** https://github.com/fllesser/pilmoji-for-parser
-- **Issues:** https://github.com/fllesser/pilmoji-for-parser/issues
-- **Releases:** https://github.com/fllesser/pilmoji-for-parser/releases
+- **Repository:** https://github.com/fllesser/apilmoji
+- **Issues:** https://github.com/fllesser/apilmoji/issues
+- **Releases:** https://github.com/fllesser/apilmoji/releases
 - **Related Project:** [nonebot-plugin-parser](https://github.com/fllesser/nonebot-plugin-parser)
