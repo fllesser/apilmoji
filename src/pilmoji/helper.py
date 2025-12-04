@@ -3,16 +3,14 @@ from enum import Enum
 from typing import Final, NamedTuple
 
 from PIL import ImageFont
-from emoji import STATUS, EMOJI_DATA
+from emoji import EMOJI_DATA
 
 # Type aliases for font and color specifications
 FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
 
 # Build emoji language pack mapping English names to emoji characters
 UNICODE_EMOJI_SET: Final[set[str]] = {
-    emj
-    for emj, data in EMOJI_DATA.items()
-    if data["status"] <= STATUS["minimally_qualified"]
+    emj for emj, data in EMOJI_DATA.items() if data["status"] <= 2
 }
 
 # Regex patterns for matching emojis
