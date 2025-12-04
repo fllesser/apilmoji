@@ -30,13 +30,14 @@ class Pilmoji:
         self._emoji_cache: dict[str, BytesIO] = {}
         self._discord_emoji_cache: dict[int, BytesIO] = {}
 
+        self.__tqdm = None
         if enable_tqdm:
             try:
                 from tqdm.asyncio import tqdm
 
                 self.__tqdm = tqdm
             except ImportError:
-                self.__tqdm = None
+                pass
 
     async def aclose(self) -> None:
         if isinstance(self._source, HTTPBasedSource):
@@ -81,8 +82,8 @@ class Pilmoji:
         xy: tuple[int, int],
         text: str,
         font: FontT,
-        fill: ColorT | None = None,
         *,
+        fill: ColorT | None = None,
         line_height: int | None = None,
         support_ds_emj: bool = False,
     ) -> None:
