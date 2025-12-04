@@ -60,6 +60,12 @@ class Pilmoji:
 
             return bytesio
 
+    async def __gather_emojis(self, *tasks: Awaitable[T]) -> list[T]:
+        if self.__tqdm is None:
+            return await gather(*tasks)
+
+        return await self.__tqdm.gather(*tasks, desc="Fetching Emojis", colour="green")
+
     def _resize_emoji(self, bytesio: BytesIO, size: float) -> PILImage:
         """Resize emoji to fit the font size"""
         bytesio.seek(0)
@@ -151,7 +157,7 @@ class Pilmoji:
                 if support_ds_emj:
                     tasks.extend([self._fetch_emoji(eid, True) for eid in ds_emj_set])
 
-                emjios = await self.__gather(*tasks)
+                emjios = await self.__gather_emojis(*tasks)
             finally:
                 client_cv.reset(token)
 
@@ -190,12 +196,6 @@ class Pilmoji:
                     cur_x += int(font.getlength(node.content))
 
             y += line_height
-
-    async def __gather(self, *tasks: Awaitable[T]) -> list[T]:
-        if self.__tqdm is None:
-            return await gather(*tasks)
-
-        return await self.__tqdm.gather(*tasks)
 
     def __repr__(self) -> str:
         return f"<Pilmoji source={self._source} cache={self._cache}>"
