@@ -1,16 +1,11 @@
 from io import BytesIO
-from typing import TypeVar
-from asyncio import Semaphore, gather
-from collections.abc import Awaitable
 
 from PIL import Image, ImageDraw
-from httpx import Limits, Timeout, AsyncClient
 
 from . import helper
 from .helper import FontT, NodeType
-from .source import HEADERS, BaseSource, EmojiCDNSource, client_cv
+from .source import EmojiCDNSource
 
-T = TypeVar("T")
 PILImage = Image.Image
 PILDraw = ImageDraw.ImageDraw
 ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
@@ -21,50 +16,9 @@ class Pilmoji:
 
     def __init__(
         self,
-        *,
-        source: BaseSource = EmojiCDNSource(),
-        cache: bool = True,
-        enable_tqdm: bool = False,
-        max_concurrent: int = 50,
+        source: EmojiCDNSource | None = None,
     ) -> None:
-        self._cache: bool = cache
-        self._source: BaseSource = source
-        self._emoji_cache: dict[str, BytesIO] = {}
-        self._max_concurrent = max_concurrent
-        self._semaphore = Semaphore(max_concurrent)
-
-        self.__tqdm = None
-        if enable_tqdm:
-            try:
-                from tqdm.asyncio import tqdm
-
-                self.__tqdm = tqdm
-            except ImportError:
-                pass
-
-    async def _fetch_emoji(self, key: str, is_discord: bool = False) -> BytesIO | None:
-        """Generic fetch function with caching support."""
-        if self._cache and key in self._emoji_cache:
-            return self._emoji_cache[key]
-
-        # Use semaphore to limit concurrent downloads
-        async with self._semaphore:
-            # Call appropriate source method
-            if is_discord:
-                bytesio = await self._source.get_discord_emoji(key)
-            else:
-                bytesio = await self._source.get_emoji(key)
-
-            if bytesio and self._cache:
-                self._emoji_cache[key] = bytesio
-
-            return bytesio
-
-    async def __gather_emojis(self, *tasks: Awaitable[T]) -> list[T]:
-        if self.__tqdm is None:
-            return await gather(*tasks)
-
-        return await self.__tqdm.gather(*tasks, desc="Fetching Emojis", colour="green")
+        self._source: EmojiCDNSource = source or EmojiCDNSource()
 
     def _resize_emoji(self, bytesio: BytesIO, size: float) -> PILImage:
         """Resize emoji to fit the font size"""
@@ -96,15 +50,15 @@ class Pilmoji:
             The image to render onto
         xy: tuple[int, int]
             Rendering position (x, y)
-        text: str | list[str]
-            The text to render (supports single or multiple lines)
+        lines: list[str]
+            The text lines to render
         font: FontT
             The font to use
         fill: ColorT | None
             Text color, defaults to black
         line_height: int | None
             Line height, defaults to font height
-        support_discord_emoji: bool
+        support_ds_emj: bool
             Whether to support Discord emoji parsing, defaults to False
         """
         if not lines:
@@ -124,48 +78,20 @@ class Pilmoji:
         # Parse lines into nodes
         nodes_lst = helper.parse_lines(lines, support_ds_emj)
 
-        # Collect all unique emojis to download
-        emj_set = {
-            node.content
-            for line in nodes_lst
-            for node in line
-            if node.type is NodeType.EMOJI
-        }
-
-        # Collect Discord emojis if needed
+        emj_set: set[str] = set()
         ds_emj_set: set[str] = set()
-        if support_ds_emj:
-            ds_emj_set = {
-                node.content
-                for line in nodes_lst
-                for node in line
-                if node.type is NodeType.DISCORD_EMOJI
-            }
+        for nodes in nodes_lst:
+            for node in nodes:
+                if node.type is NodeType.EMOJI:
+                    emj_set.add(node.content)
+                elif node.type is NodeType.DISCORD_EMOJI:
+                    ds_emj_set.add(node.content)
 
-        # Download all emojis concurrently with shared client
-        async with AsyncClient(
-            headers=HEADERS,
-            timeout=Timeout(connect=5, read=20, write=15, pool=15),
-            limits=Limits(
-                max_connections=self._max_concurrent + 10,
-                max_keepalive_connections=self._max_concurrent,
-            ),
-        ) as client:
-            token = client_cv.set(client)
-            try:
-                tasks = [self._fetch_emoji(emoji) for emoji in emj_set]
-                if support_ds_emj:
-                    tasks.extend([self._fetch_emoji(eid, True) for eid in ds_emj_set])
-
-                emjios = await self.__gather_emojis(*tasks)
-            finally:
-                client_cv.reset(token)
-
-        # Build emoji mappings
-        emj_num = len(emj_set)
-        emj_map = dict(zip(emj_set, emjios[:emj_num]))
-        if support_ds_emj:
-            emj_map.update(zip(ds_emj_set, emjios[emj_num:]))
+        # Download all emojis concurrently using source
+        emj_map = await self._source.fetch_emojis(
+            emj_set,
+            ds_emj_set,
+        )
 
         # Render each line
         font_size = helper.get_font_size(font)
@@ -198,4 +124,4 @@ class Pilmoji:
             y += line_height
 
     def __repr__(self) -> str:
-        return f"<Pilmoji source={self._source} cache={self._cache}>"
+        return f"<Pilmoji source={self._source}>"

@@ -18,15 +18,14 @@ def font_path() -> Path:
 @pytest.fixture(scope="session")
 def cache_dir() -> Path:
     """返回缓存目录路径。"""
-    clean_dir(CACHE_DIR)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return CACHE_DIR
 
 
-def clean_dir(path: Path):
-    if not path.exists():
+def clean_dir(cache_dir: Path):
+    if not cache_dir.exists():
         return
-    for fd in path.glob("*"):
+    for fd in cache_dir.glob("*"):
         if fd.is_dir():
             clean_dir(fd)
             fd.rmdir()
