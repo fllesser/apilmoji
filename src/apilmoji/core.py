@@ -8,7 +8,7 @@ from httpx import Limits, Timeout, AsyncClient
 
 from . import helper
 from .helper import FontT, NodeType
-from .source import BaseSource, EmojiCDNSource, client_cv
+from .source import HEADERS, BaseSource, EmojiCDNSource, client_cv
 
 T = TypeVar("T")
 PILImage = Image.Image
@@ -133,9 +133,9 @@ class Pilmoji:
 
         # Download all emojis concurrently with shared client
         async with AsyncClient(
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=Timeout(connect=5.0, read=15.0, write=5.0, pool=5.0),
-            limits=Limits(max_connections=32, max_keepalive_connections=32),
+            headers=HEADERS,
+            timeout=Timeout(connect=5.0, read=15.0, write=15.0, pool=15.0),
+            limits=Limits(max_connections=64, max_keepalive_connections=64),
         ) as client:
             token = client_cv.set(client)
             try:

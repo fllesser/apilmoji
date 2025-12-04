@@ -79,7 +79,7 @@ class HTTPBasedSource(BaseSource):
                 response.raise_for_status()
                 return await self._process_response(response, file_path)
 
-        async with AsyncClient(headers={"User-Agent": "Mozilla/5.0"}) as client:
+        async with AsyncClient(headers=HEADERS) as client:
             async with client.stream("GET", url) as response:
                 response.raise_for_status()
                 return await self._process_response(response, file_path)
@@ -148,6 +148,12 @@ class EmojiStyle(str, Enum):
 
 ELK_SH_CDN = "https://emojicdn.elk.sh"
 MQRIO_DEV_CDN = "https://emoji-cdn.mqrio.dev"
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML,"
+        " like Gecko) Chrome/55.0.2883.87 UBrowser/6.2.4098.3 Safari/537.36"
+    )
+}
 
 
 class EmojiCDNSource(HTTPBasedSource):
