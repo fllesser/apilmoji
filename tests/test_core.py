@@ -14,7 +14,7 @@ COMPLEX_TEXT = [
 async def test_pilmoji(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from pilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
@@ -31,7 +31,7 @@ async def test_pilmoji(font_path, cache_dir):
 async def test_text(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from pilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
@@ -46,7 +46,7 @@ async def test_text(font_path, cache_dir):
 async def test_text_with_discord_emoji(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from pilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)
@@ -76,7 +76,7 @@ async def test_text_with_discord_emoji(font_path, cache_dir):
 async def test_text_without_context_manager(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from pilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
@@ -93,7 +93,7 @@ async def test_text_without_context_manager(font_path, cache_dir):
 async def test_edge_case(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from pilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Pilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)

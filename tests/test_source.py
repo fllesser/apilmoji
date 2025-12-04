@@ -6,8 +6,8 @@ from httpx import AsyncClient
 async def test_get_emoji_from_cdn(cache_dir):
     from httpx import AsyncClient
 
-    from pilmoji import EmojiCDNSource
-    from pilmoji.source import client_cv
+    from apilmoji import EmojiCDNSource
+    from apilmoji.source import client_cv
 
     emoji_str = "👍 😎 😊 😍 😘 😗 😙 😚 😋"
     emoji_list = emoji_str.split(" ")
@@ -29,8 +29,8 @@ async def test_get_emoji_from_cdn(cache_dir):
 
 @pytest.mark.asyncio
 async def test_get_discord_emoji_from_cdn(cache_dir):
-    from pilmoji import EmojiCDNSource
-    from pilmoji.source import client_cv
+    from apilmoji import EmojiCDNSource
+    from apilmoji.source import client_cv
 
     discord_emoji_id = "596576798351949847"
     source = EmojiCDNSource(cache_dir=cache_dir)
@@ -52,8 +52,8 @@ async def test_all_style(cache_dir):
 
     from httpx import AsyncClient
 
-    from pilmoji import EmojiStyle, EmojiCDNSource
-    from pilmoji.source import client_cv
+    from apilmoji import EmojiStyle, EmojiCDNSource
+    from apilmoji.source import client_cv
 
     emoji_str = "👍"
 
