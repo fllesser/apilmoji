@@ -14,15 +14,15 @@ COMPLEX_TEXT = [
 async def test_pilmoji(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from apilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
-    pilmoji = Pilmoji(source=source)
     image = Image.new("RGB", (300, 200), (255, 255, 255))
     for y in range(10, 170, 30):
-        await pilmoji.text(image, (10, y), ["Hello👍world😎"], font, fill=(0, 0, 0))
-
+        await Apilmoji.text(
+            image, (10, y), ["Hello👍world😎"], font, fill=(0, 0, 0), source=source
+        )
     assert image is not None
     image.save(cache_dir / "test_pilmoji.png")
 
@@ -31,13 +31,14 @@ async def test_pilmoji(font_path, cache_dir):
 async def test_text(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from apilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
-    pilmoji = Pilmoji(source=source)
     image = Image.new("RGB", (800, 300), (255, 255, 255))
-    await pilmoji.text(image, (10, 40), COMPLEX_TEXT, font, fill=(0, 0, 0))
+    await Apilmoji.text(
+        image, (10, 40), COMPLEX_TEXT, font, fill=(0, 0, 0), source=source
+    )
     assert image is not None
     image.save(cache_dir / "text.png")
 
@@ -46,69 +47,61 @@ async def test_text(font_path, cache_dir):
 async def test_text_with_discord_emoji(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from apilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)
-    pilmoji = Pilmoji(source=source)
     image = Image.new("RGB", (600, 300), (255, 255, 255))
-    await pilmoji.text(
+    await Apilmoji.text(
         image,
         (10, 40),
         COMPLEX_TEXT,
         font,
         fill=(0, 0, 0),
         support_ds_emj=True,
+        source=source,
     )
-    await pilmoji.text(
+    await Apilmoji.text(
         image,
         (10, 10),
         ["<:rooThink:596576798351949847>"],
         font,
         fill=(0, 0, 0),
         support_ds_emj=True,
+        source=source,
     )
     assert image is not None
     image.save(cache_dir / "text_with_ds_emj.png")
 
 
 @pytest.mark.asyncio
-async def test_text_without_context_manager(font_path, cache_dir):
-    from PIL import Image, ImageFont
-
-    from apilmoji import Pilmoji, EmojiCDNSource
-
-    font = ImageFont.truetype(font_path, 24)
-    source = EmojiCDNSource(cache_dir=cache_dir)
-    pilmoji = Pilmoji(source=source)
-
-    image = Image.new("RGB", (300, 200), (255, 255, 255))
-    for y in range(10, 170, 30):
-        await pilmoji.text(image, (10, y), ["Hello👍world😎"], font, fill=(0, 0, 0))
-
-    assert image is not None
-
-
-@pytest.mark.asyncio
 async def test_edge_case(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from apilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)
-    pilmoji = Pilmoji(source=source)
     image = Image.new("RGB", (300, 200), (255, 255, 255))
-    await pilmoji.text(image, (10, 10), [""], font, fill=(0, 0, 0))
-    await pilmoji.text(image, (10, 10), ["Hello World!"], font, fill=(0, 0, 0))
+    await Apilmoji.text(image, (10, 10), [""], font, fill=(0, 0, 0), source=source)
+    await Apilmoji.text(
+        image, (10, 10), ["Hello World!"], font, fill=(0, 0, 0), source=source
+    )
 
     image = Image.new("RGB", (300, 200), (255, 255, 255))
-    await pilmoji.text(image, (10, 10), [""], font, fill=(0, 0, 0), support_ds_emj=True)
-    await pilmoji.text(
+    await Apilmoji.text(
         image,
         (10, 10),
-        [str(pilmoji)],
+        [""],
         font,
         fill=(0, 0, 0),
-        support_ds_emj=True,
+        source=source,
+    )
+    await Apilmoji.text(
+        image,
+        (10, 10),
+        ["Hello World!"],
+        font,
+        fill=(0, 0, 0),
+        source=source,
     )

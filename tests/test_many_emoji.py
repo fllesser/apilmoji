@@ -1,6 +1,6 @@
 import pytest
 
-text = """
+emoji_texts = """
 表情
 😀😁😂😃😄😅😆😉😊😋😎😍😘😗😙😚☺😇😐😑😶😏😣😥😮😯😪😫😴😌😛😜😝😒😓😔😕😲😷😖
 😞😟😤😢😭😦😧😨😬😰😱😳😵😡😠
@@ -74,12 +74,18 @@ text = """
 async def test_many_emoji(font_path, cache_dir):
     from PIL import Image, ImageFont
 
-    from apilmoji import Pilmoji, EmojiCDNSource
+    from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(cache_dir=cache_dir)
-    pilmoji = Pilmoji(source=source)
     image = Image.new("RGB", (1050, 2100), (255, 255, 255))
-    await pilmoji.text(image, (10, 10), text.splitlines(), font, fill=(0, 0, 0))
+    await Apilmoji.text(
+        image,
+        (10, 10),
+        emoji_texts.splitlines(),
+        font,
+        fill=(0, 0, 0),
+        source=source,
+    )
     assert image is not None
     image.save(cache_dir / "test_many_emoji.png")
