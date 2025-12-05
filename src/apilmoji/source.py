@@ -105,7 +105,6 @@ class EmojiCDNSource:
     async def _download_emoji(
         self,
         emoji: str,
-        *,
         is_discord: bool = False,
         client: AsyncClient | None = None,
     ) -> Path | None:
@@ -118,23 +117,20 @@ class EmojiCDNSource:
             file_path = self._emj_dir / f"{emoji}.png"
             url = f"{self.base_url}/{emoji}?style={self.style}"
 
-        if file_path.exists():
-            return file_path
-
         async def download_with_stream(_client: AsyncClient) -> Path | None:
-            async with _client.stream("GET", url) as response:
-                if response.status_code != 200:
-                    return None
+            try:
+                async with _client.stream("GET", url) as response:
+                    if response.status_code != 200:
+                        return None
 
-                try:
                     async with aopen(file_path, "wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=8192):
                             await f.write(chunk)
-                except Exception:
-                    file_path.unlink(missing_ok=True)
-                    return None
 
-                return file_path
+            except Exception:
+                file_path.unlink(missing_ok=True)
+                return None
+            return file_path
 
         if client is None:
             async with AsyncClient(headers=HEADERS) as client:
@@ -151,8 +147,8 @@ class EmojiCDNSource:
         Returns:
             BytesIO containing the emoji image, or None if download fails
         """
-
-        return await self._download_emoji(emoji)
+        path = self._build_emoji_path(emoji)
+        return path if path.exists() else await self._download_emoji(emoji)
 
     async def get_discord_emoji(self, id: str) -> Path | None:
         """Get a single Discord emoji image.
@@ -163,14 +159,14 @@ class EmojiCDNSource:
         Returns:
             BytesIO containing the emoji image, or None if download fails
         """
-        return await self._download_emoji(id, is_discord=True)
+        path = self._build_emoji_path(id, True)
+        return path if path.exists() else await self._download_emoji(id, True)
 
     async def _fetch_with_semaphore(
         self,
         emoji: str,
-        *,
         is_discord: bool = False,
-        client: AsyncClient,
+        client: AsyncClient | None = None,
     ) -> Path | None:
         """Fetch a single emoji with semaphore-based concurrency control."""
         async with self._semaphore:
@@ -245,7 +241,7 @@ class EmojiCDNSource:
                 self._fetch_with_semaphore(emoji, client=client) for emoji in emoji_list
             ]
             ds_tasks = [
-                self._fetch_with_semaphore(eid, is_discord=True, client=client)
+                self._fetch_with_semaphore(eid, True, client)
                 for eid in discord_emoji_list
             ]
             tasks.extend(ds_tasks)
