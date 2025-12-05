@@ -12,23 +12,22 @@ PILDraw = ImageDraw.ImageDraw
 ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
-def _resize_emoji(emoji_path: Path, size: float) -> PILImage:
-    """Resize emoji to fit the font size"""
-
-    with Image.open(emoji_path).convert("RGBA") as emoji_img:
-        emoji_size = int(size) - 2
-        aspect_ratio = emoji_img.height / emoji_img.width
-        return emoji_img.resize(
-            (emoji_size, int(emoji_size * aspect_ratio)),
-            Image.Resampling.LANCZOS,
-        )
-
-
 async def _aresize_emoji(
     emoji: str, path: Path, size: float
 ) -> tuple[str, PILImage | None]:
+    def resize_emoji() -> PILImage:
+        """Resize emoji to fit the font size"""
+
+        with Image.open(path).convert("RGBA") as emoji_img:
+            emoji_size = int(size) - 2
+            aspect_ratio = emoji_img.height / emoji_img.width
+            return emoji_img.resize(
+                (emoji_size, int(emoji_size * aspect_ratio)),
+                Image.Resampling.LANCZOS,
+            )
+
     try:
-        img = await asyncio.to_thread(_resize_emoji, path, size)
+        img = await asyncio.to_thread(resize_emoji)
         return emoji, img
     except Exception:
         path.unlink(True)
@@ -114,14 +113,14 @@ async def text(
         if path is not None
     ]
     resize_results = await asyncio.gather(*resize_tasks)
-    resized_emjs = {emoji: img for emoji, img in resize_results if img is not None}
+    resized_emj_map = dict(resize_results)
 
     for line in nodes_lst:
         cur_x = x
 
         for node in line:
             if node.type is NodeType.EMOJI or node.type is NodeType.DISCORD_EMOJI:
-                emj_img = resized_emjs.get(node.content)
+                emj_img = resized_emj_map.get(node.content)
             else:
                 emj_img = None
 
