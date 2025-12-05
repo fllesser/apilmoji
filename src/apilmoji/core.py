@@ -1,4 +1,5 @@
-from io import BytesIO
+import asyncio
+from pathlib import Path
 
 from PIL import Image, ImageDraw
 
@@ -11,16 +12,28 @@ PILDraw = ImageDraw.ImageDraw
 ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
-def _resize_emoji(bytesio: BytesIO, size: float) -> PILImage:
+def _resize_emoji(emoji_path: Path, size: float) -> PILImage:
     """Resize emoji to fit the font size"""
-    bytesio.seek(0)
-    with Image.open(bytesio).convert("RGBA") as emoji_img:
+
+    with Image.open(emoji_path).convert("RGBA") as emoji_img:
         emoji_size = int(size) - 2
         aspect_ratio = emoji_img.height / emoji_img.width
         return emoji_img.resize(
             (emoji_size, int(emoji_size * aspect_ratio)),
             Image.Resampling.LANCZOS,
         )
+
+
+async def _aresize_emoji(
+    emoji: str, path: Path, size: float
+) -> tuple[str, PILImage | None]:
+    try:
+        # 在线程中执行 CPU 密集型操作
+        img = await asyncio.to_thread(_resize_emoji, path, size)
+        return emoji, img
+    except Exception:
+        path.unlink(True)
+        return emoji, None
 
 
 async def text(
@@ -96,12 +109,11 @@ async def text(
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
-    resized_emjs: dict[str, PILImage] = {}
-    for emoji, bytesio in emj_map.items():
-        try:
-            resized_emjs[emoji] = _resize_emoji(bytesio, font_size)
-        except Exception:
-            continue
+    results = await asyncio.gather(
+        *[_aresize_emoji(emoji, path, font_size) for emoji, path in emj_map.items()]
+    )
+
+    resized_emjs = {emoji: img for emoji, img in results if img is not None}
 
     for line in nodes_lst:
         cur_x = x

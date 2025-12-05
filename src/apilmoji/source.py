@@ -1,4 +1,3 @@
-from io import BytesIO
 from enum import Enum
 from asyncio import Semaphore, gather, create_task
 from pathlib import Path
@@ -99,7 +98,7 @@ class EmojiCDNSource:
         *,
         is_discord: bool = False,
         client: AsyncClient | None = None,
-    ) -> BytesIO | None:
+    ) -> Path | None:
         """内部下载方法"""
         if is_discord:
             file_name = f"{emoji}.png"
@@ -111,26 +110,22 @@ class EmojiCDNSource:
 
         # 检查缓存
         if file_path.exists():
-            async with aopen(file_path, "rb") as f:
-                return BytesIO(await f.read())
+            return file_path
 
-        async def download_with_stream(_client: AsyncClient) -> BytesIO | None:
+        async def download_with_stream(_client: AsyncClient) -> Path | None:
             async with _client.stream("GET", url) as response:
                 if response.status_code != 200:
                     return None
 
-                buffer = BytesIO()
                 try:
                     async with aopen(file_path, "wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=8192):
-                            buffer.write(chunk)
                             await f.write(chunk)
                 except Exception:
                     file_path.unlink(missing_ok=True)
                     return None
 
-                buffer.seek(0)
-                return buffer
+                return file_path
 
         if client is None:
             async with AsyncClient(headers=HEADERS) as client:
@@ -138,7 +133,7 @@ class EmojiCDNSource:
 
         return await download_with_stream(client)
 
-    async def get_emoji(self, emoji: str) -> BytesIO | None:
+    async def get_emoji(self, emoji: str) -> Path | None:
         """Get a single emoji image.
 
         Args:
@@ -150,7 +145,7 @@ class EmojiCDNSource:
 
         return await self._download_emoji(emoji)
 
-    async def get_discord_emoji(self, id: str) -> BytesIO | None:
+    async def get_discord_emoji(self, id: str) -> Path | None:
         """Get a single Discord emoji image.
 
         Args:
@@ -167,7 +162,7 @@ class EmojiCDNSource:
         *,
         is_discord: bool = False,
         client: AsyncClient,
-    ) -> BytesIO | None:
+    ) -> Path | None:
         """Fetch a single emoji with semaphore-based concurrency control."""
         async with self._semaphore:
             return await self._download_emoji(
@@ -177,8 +172,8 @@ class EmojiCDNSource:
             )
 
     async def __gather_emojis(
-        self, *tasks: Awaitable[BytesIO | None]
-    ) -> list[BytesIO | None]:
+        self, *tasks: Awaitable[Path | None]
+    ) -> list[Path | None]:
         """Gather emoji download tasks with optional tqdm progress bar."""
         if self.__tqdm is None:
             return await gather(*tasks)
@@ -194,7 +189,7 @@ class EmojiCDNSource:
         self,
         emojis: set[str],
         discord_emojis: set[str] | None = None,
-    ) -> dict[str, BytesIO]:
+    ) -> dict[str, Path]:
         """Fetch multiple emojis concurrently.
 
         Args:
@@ -240,9 +235,7 @@ class EmojiCDNSource:
         all_emojis = emoji_list + discord_emoji_list
 
         return {
-            emoji: bytesio
-            for emoji, bytesio in zip(all_emojis, results)
-            if bytesio is not None
+            emoji: path for emoji, path in zip(all_emojis, results) if path is not None
         }
 
     def __repr__(self) -> str:
