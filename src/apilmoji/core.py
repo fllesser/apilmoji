@@ -109,11 +109,13 @@ async def text(
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
-    results = await asyncio.gather(
-        *[_aresize_emoji(emoji, path, font_size) for emoji, path in emj_map.items()]
-    )
-
-    resized_emjs = {emoji: img for emoji, img in results if img is not None}
+    resize_tasks = [
+        _aresize_emoji(emoji, path, font_size)
+        for emoji, path in emj_map.items()
+        if path is not None
+    ]
+    resize_results = await asyncio.gather(*resize_tasks)
+    resized_emjs = {emoji: img for emoji, img in resize_results if img is not None}
 
     for line in nodes_lst:
         cur_x = x

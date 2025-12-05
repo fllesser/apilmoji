@@ -198,7 +198,7 @@ class EmojiCDNSource:
         self,
         emojis: set[str],
         discord_emojis: set[str] | None = None,
-    ) -> dict[str, Path]:
+    ) -> dict[str, Path | None]:
         """Fetch multiple emojis concurrently.
 
         Args:
@@ -210,7 +210,7 @@ class EmojiCDNSource:
         """
         discord_emojis = discord_emojis or set()
 
-        emoji_map: dict[str, Path] = {}
+        emoji_map: dict[str, Path | None] = {}
         emoji_list: list[str] = []
         discord_emoji_list: list[str] = []
 
@@ -254,12 +254,7 @@ class EmojiCDNSource:
             download_results = await self.__gather_emojis(*tasks)
 
         # Combine all emojis into a single dict using the same list order
-        download_emojis = emoji_list + discord_emoji_list
-
-        for emoji, path in zip(download_emojis, download_results):
-            if path is not None:
-                emoji_map[emoji] = path
-
+        emoji_map.update(zip(emoji_list + discord_emoji_list, download_results))
         return emoji_map
 
     def __repr__(self) -> str:
