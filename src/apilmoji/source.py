@@ -194,7 +194,7 @@ class EmojiCDNSource:
         self,
         emojis: set[str],
         discord_emojis: set[str] | None = None,
-    ) -> dict[str, BytesIO | None]:
+    ) -> dict[str, BytesIO]:
         """Fetch multiple emojis concurrently.
 
         Args:
@@ -238,7 +238,12 @@ class EmojiCDNSource:
 
         # Combine all emojis into a single dict using the same list order
         all_emojis = emoji_list + discord_emoji_list
-        return dict(zip(all_emojis, results))
+
+        return {
+            emoji: bytesio
+            for emoji, bytesio in zip(all_emojis, results)
+            if bytesio is not None
+        }
 
     def __repr__(self) -> str:
         return f"<EmojiCDNSource style={self.style}>"
