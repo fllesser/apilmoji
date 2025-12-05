@@ -120,10 +120,14 @@ class EmojiCDNSource:
                     return None
 
                 buffer = BytesIO()
-                async with aopen(file_path, "wb") as f:
-                    async for chunk in response.aiter_bytes(chunk_size=8192):
-                        await f.write(chunk)
-                        buffer.write(chunk)
+                try:
+                    async with aopen(file_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(chunk_size=8192):
+                            buffer.write(chunk)
+                            await f.write(chunk)
+                except Exception:
+                    file_path.unlink(missing_ok=True)
+                    return None
 
                 buffer.seek(0)
                 return buffer
@@ -166,14 +170,11 @@ class EmojiCDNSource:
     ) -> BytesIO | None:
         """Fetch a single emoji with semaphore-based concurrency control."""
         async with self._semaphore:
-            try:
-                return await self._download_emoji(
-                    emoji,
-                    client=client,
-                    is_discord=is_discord,
-                )
-            except Exception:
-                return None
+            return await self._download_emoji(
+                emoji,
+                client=client,
+                is_discord=is_discord,
+            )
 
     async def __gather_emojis(
         self, *tasks: Awaitable[BytesIO | None]
