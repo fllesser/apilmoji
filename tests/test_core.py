@@ -85,14 +85,14 @@ async def test_edge_case(font_path, cache_dir):
     image = Image.new("RGB", (300, 200), (255, 255, 255))
     await Apilmoji.text(image, (10, 10), [""], font, fill=(0, 0, 0), source=source)
     await Apilmoji.text(
-        image, (10, 10), ["Hello World!"], font, fill=(0, 0, 0), source=source
+        image, (10, 10), "Hello World!", font, fill=(0, 0, 0), source=source
     )
 
     image = Image.new("RGB", (300, 200), (255, 255, 255))
     await Apilmoji.text(
         image,
         (10, 10),
-        [""],
+        "",
         font,
         fill=(0, 0, 0),
         source=source,
@@ -100,7 +100,7 @@ async def test_edge_case(font_path, cache_dir):
     await Apilmoji.text(
         image,
         (10, 10),
-        ["Hello World!"],
+        "Hello World!",
         font,
         fill=(0, 0, 0),
         source=source,

@@ -1,4 +1,5 @@
-from io import BytesIO
+import asyncio
+from pathlib import Path
 
 from PIL import Image, ImageDraw
 
@@ -11,16 +12,26 @@ PILDraw = ImageDraw.ImageDraw
 ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
-def _resize_emoji(bytesio: BytesIO, size: float) -> PILImage:
-    """Resize emoji to fit the font size"""
-    bytesio.seek(0)
-    with Image.open(bytesio).convert("RGBA") as emoji_img:
-        emoji_size = int(size) - 2
-        aspect_ratio = emoji_img.height / emoji_img.width
-        return emoji_img.resize(
-            (emoji_size, int(emoji_size * aspect_ratio)),
-            Image.Resampling.LANCZOS,
-        )
+async def _aresize_emoji(
+    emoji: str, path: Path, size: float
+) -> tuple[str, PILImage | None]:
+    def resize_emoji() -> PILImage:
+        """Resize emoji to fit the font size"""
+
+        with Image.open(path).convert("RGBA") as emoji_img:
+            emoji_size = int(size) - 2
+            aspect_ratio = emoji_img.height / emoji_img.width
+            return emoji_img.resize(
+                (emoji_size, int(emoji_size * aspect_ratio)),
+                Image.Resampling.LANCZOS,
+            )
+
+    try:
+        img = await asyncio.to_thread(resize_emoji)
+        return emoji, img
+    except Exception:
+        path.unlink(True)
+        return emoji, None
 
 
 async def text(
@@ -96,19 +107,20 @@ async def text(
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
-    resized_emjs: dict[str, PILImage] = {}
-    for emoji, bytesio in emj_map.items():
-        try:
-            resized_emjs[emoji] = _resize_emoji(bytesio, font_size)
-        except Exception:
-            continue
+    resize_tasks = [
+        _aresize_emoji(emoji, path, font_size)
+        for emoji, path in emj_map.items()
+        if path is not None
+    ]
+    resize_results = await asyncio.gather(*resize_tasks)
+    resized_emj_map = dict(resize_results)
 
     for line in nodes_lst:
         cur_x = x
 
         for node in line:
             if node.type is NodeType.EMOJI or node.type is NodeType.DISCORD_EMOJI:
-                emj_img = resized_emjs.get(node.content)
+                emj_img = resized_emj_map.get(node.content)
             else:
                 emj_img = None
 

@@ -77,12 +77,12 @@ async def test_many_emoji(font_path, cache_dir):
     from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
-    source = EmojiCDNSource(cache_dir=cache_dir)
-    image = Image.new("RGB", (1050, 2100), (255, 255, 255))
+    source = EmojiCDNSource(cache_dir=cache_dir, enable_tqdm=True)
+    image = Image.new("RGB", (1050, 2100), (255, 248, 220))  # 纸黄背景
     await Apilmoji.text(
         image,
         (10, 10),
-        emoji_texts.splitlines(),
+        emoji_texts,
         font,
         fill=(0, 0, 0),
         source=source,

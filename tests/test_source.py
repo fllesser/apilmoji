@@ -59,3 +59,14 @@ async def test_all_style(cache_dir):
     )
 
     await asyncio.gather(*[test_style(style) for style in styles])
+
+
+@pytest.mark.asyncio
+async def test_tqdm(cache_dir):
+    from apilmoji import EmojiCDNSource
+
+    emoji_str = "👍 😎 😊 😍 😘 😗 😙 😚 😋"
+    emoji_list = emoji_str.split(" ")
+
+    source = EmojiCDNSource(cache_dir=cache_dir, enable_tqdm=True)
+    await source.fetch_emojis(set(emoji_list))

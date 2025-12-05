@@ -21,7 +21,7 @@ Repository = "https://github.com/fllesser/apilmoji"
 
 [dependency-groups]
 dev = [
-  "ruff>=0.14.7,<1.0.0",
+  "ruff>=0.14.8,<1.0.0",
   "poethepoet>=0.38.0,<1.0.0",
   "tqdm>=4.66.0",
   { include-group = "test" },
@@ -55,8 +55,9 @@ exclude_lines = [
   "raise NotImplementedError",
   "if TYPE_CHECKING:",
   "@overload",
-  "except HTTPError:",
+  "except HTTPError",
   "except ImportError",
+  "except Exception",
   "assert not",
 ]
 

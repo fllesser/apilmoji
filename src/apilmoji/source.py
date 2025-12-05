@@ -1,6 +1,5 @@
-from io import BytesIO
 from enum import Enum
-from asyncio import Semaphore, gather, create_task
+from asyncio import Semaphore, gather
 from pathlib import Path
 from collections.abc import Awaitable
 
@@ -93,13 +92,16 @@ class EmojiCDNSource:
             except ImportError:
                 pass
 
+    def _build_emoji_path(self, emoji: str, is_discord: bool = False) -> Path:
+        """获取表情路径"""
+        return (self._ds_dir if is_discord else self._emj_dir) / f"{emoji}.png"
+
     async def _download_emoji(
         self,
         emoji: str,
-        *,
         is_discord: bool = False,
         client: AsyncClient | None = None,
-    ) -> BytesIO | None:
+    ) -> Path | None:
         """内部下载方法"""
         if is_discord:
             file_name = f"{emoji}.png"
@@ -109,28 +111,20 @@ class EmojiCDNSource:
             file_path = self._emj_dir / f"{emoji}.png"
             url = f"{self.base_url}/{emoji}?style={self.style}"
 
-        # 检查缓存
-        if file_path.exists():
-            async with aopen(file_path, "rb") as f:
-                return BytesIO(await f.read())
+        async def download_with_stream(_client: AsyncClient) -> Path | None:
+            try:
+                async with _client.stream("GET", url) as response:
+                    if response.status_code != 200:
+                        return None
 
-        async def download_with_stream(_client: AsyncClient) -> BytesIO | None:
-            async with _client.stream("GET", url) as response:
-                if response.status_code != 200:
-                    return None
-
-                buffer = BytesIO()
-                try:
                     async with aopen(file_path, "wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=8192):
-                            buffer.write(chunk)
                             await f.write(chunk)
-                except Exception:
-                    file_path.unlink(missing_ok=True)
-                    return None
 
-                buffer.seek(0)
-                return buffer
+            except Exception:
+                file_path.unlink(missing_ok=True)
+                return None
+            return file_path
 
         if client is None:
             async with AsyncClient(headers=HEADERS) as client:
@@ -138,7 +132,7 @@ class EmojiCDNSource:
 
         return await download_with_stream(client)
 
-    async def get_emoji(self, emoji: str) -> BytesIO | None:
+    async def get_emoji(self, emoji: str) -> Path | None:
         """Get a single emoji image.
 
         Args:
@@ -147,10 +141,10 @@ class EmojiCDNSource:
         Returns:
             BytesIO containing the emoji image, or None if download fails
         """
+        path = self._build_emoji_path(emoji)
+        return path if path.exists() else await self._download_emoji(emoji)
 
-        return await self._download_emoji(emoji)
-
-    async def get_discord_emoji(self, id: str) -> BytesIO | None:
+    async def get_discord_emoji(self, id: str) -> Path | None:
         """Get a single Discord emoji image.
 
         Args:
@@ -159,15 +153,15 @@ class EmojiCDNSource:
         Returns:
             BytesIO containing the emoji image, or None if download fails
         """
-        return await self._download_emoji(id, is_discord=True)
+        path = self._build_emoji_path(id, True)
+        return path if path.exists() else await self._download_emoji(id, True)
 
     async def _fetch_with_semaphore(
         self,
         emoji: str,
-        *,
         is_discord: bool = False,
-        client: AsyncClient,
-    ) -> BytesIO | None:
+        client: AsyncClient | None = None,
+    ) -> Path | None:
         """Fetch a single emoji with semaphore-based concurrency control."""
         async with self._semaphore:
             return await self._download_emoji(
@@ -177,8 +171,8 @@ class EmojiCDNSource:
             )
 
     async def __gather_emojis(
-        self, *tasks: Awaitable[BytesIO | None]
-    ) -> list[BytesIO | None]:
+        self, *tasks: Awaitable[Path | None]
+    ) -> list[Path | None]:
         """Gather emoji download tasks with optional tqdm progress bar."""
         if self.__tqdm is None:
             return await gather(*tasks)
@@ -194,7 +188,7 @@ class EmojiCDNSource:
         self,
         emojis: set[str],
         discord_emojis: set[str] | None = None,
-    ) -> dict[str, BytesIO]:
+    ) -> dict[str, Path | None]:
         """Fetch multiple emojis concurrently.
 
         Args:
@@ -206,9 +200,26 @@ class EmojiCDNSource:
         """
         discord_emojis = discord_emojis or set()
 
-        # Convert sets to lists once to maintain consistent ordering
-        emoji_list = list(emojis)
-        discord_emoji_list = list(discord_emojis)
+        emoji_map: dict[str, Path | None] = {}
+        emoji_list: list[str] = []
+        discord_emoji_list: list[str] = []
+
+        for emoji in emojis:
+            path = self._build_emoji_path(emoji)
+            if path.exists():
+                emoji_map[emoji] = path
+            else:
+                emoji_list.append(emoji)
+
+        for eid in discord_emojis:
+            path = self._build_emoji_path(eid, True)
+            if path.exists():
+                emoji_map[eid] = path
+            else:
+                discord_emoji_list.append(eid)
+
+        if not emoji_list and not discord_emoji_list:
+            return emoji_map
 
         # Create shared HTTP client for all downloads
         async with AsyncClient(
@@ -221,29 +232,17 @@ class EmojiCDNSource:
         ) as client:
             # Create download tasks using the same list order
             tasks = [
-                create_task(self._fetch_with_semaphore(emoji, client=client))
-                for emoji in emoji_list
+                self._fetch_with_semaphore(emoji, client=client) for emoji in emoji_list
             ]
-            tasks.extend(
-                [
-                    create_task(
-                        self._fetch_with_semaphore(eid, is_discord=True, client=client)
-                    )
-                    for eid in discord_emoji_list
-                ]
-            )
+            ds_tasks = [
+                self._fetch_with_semaphore(eid, True, client)
+                for eid in discord_emoji_list
+            ]
+            tasks.extend(ds_tasks)
 
             # Download all concurrently
-            results = await self.__gather_emojis(*tasks)
+            download_results = await self.__gather_emojis(*tasks)
 
         # Combine all emojis into a single dict using the same list order
-        all_emojis = emoji_list + discord_emoji_list
-
-        return {
-            emoji: bytesio
-            for emoji, bytesio in zip(all_emojis, results)
-            if bytesio is not None
-        }
-
-    def __repr__(self) -> str:
-        return f"<EmojiCDNSource style={self.style}>"
+        emoji_map.update(zip(emoji_list + discord_emoji_list, download_results))
+        return emoji_map
