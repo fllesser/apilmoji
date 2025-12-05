@@ -119,8 +119,11 @@ class EmojiCDNSource:
                     return None
 
                 buffer = BytesIO()
-                async for chunk in response.aiter_bytes(chunk_size=8192):
-                    buffer.write(chunk)
+                async with aopen(file_path, "wb") as f:
+                    async for chunk in response.aiter_bytes(chunk_size=8192):
+                        await f.write(chunk)
+                        buffer.write(chunk)
+
                 buffer.seek(0)
                 return buffer
 
