@@ -63,11 +63,12 @@ class EmojiCDNSource:
         *,
         cache_dir: Path | None = None,
         enable_discord: bool = False,
-        max_concurrent: int = 50,
         enable_tqdm: bool = False,
+        max_concurrent: int = 50,
     ) -> None:
         self.base_url = base_url
         self.style = str(style)
+
         self._max_concurrent = max_concurrent
         self._semaphore = Semaphore(max_concurrent)
 
@@ -119,8 +120,15 @@ class EmojiCDNSource:
                     return None
 
                 buffer = BytesIO()
-                async for chunk in response.aiter_bytes(chunk_size=8192):
-                    buffer.write(chunk)
+                try:
+                    async with aopen(file_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(chunk_size=8192):
+                            buffer.write(chunk)
+                            await f.write(chunk)
+                except Exception:
+                    file_path.unlink(missing_ok=True)
+                    return None
+
                 buffer.seek(0)
                 return buffer
 
@@ -162,14 +170,11 @@ class EmojiCDNSource:
     ) -> BytesIO | None:
         """Fetch a single emoji with semaphore-based concurrency control."""
         async with self._semaphore:
-            try:
-                return await self._download_emoji(
-                    emoji,
-                    client=client,
-                    is_discord=is_discord,
-                )
-            except Exception:
-                return None
+            return await self._download_emoji(
+                emoji,
+                client=client,
+                is_discord=is_discord,
+            )
 
     async def __gather_emojis(
         self, *tasks: Awaitable[BytesIO | None]
@@ -189,7 +194,7 @@ class EmojiCDNSource:
         self,
         emojis: set[str],
         discord_emojis: set[str] | None = None,
-    ) -> dict[str, BytesIO | None]:
+    ) -> dict[str, BytesIO]:
         """Fetch multiple emojis concurrently.
 
         Args:
@@ -233,7 +238,12 @@ class EmojiCDNSource:
 
         # Combine all emojis into a single dict using the same list order
         all_emojis = emoji_list + discord_emoji_list
-        return dict(zip(all_emojis, results))
+
+        return {
+            emoji: bytesio
+            for emoji, bytesio in zip(all_emojis, results)
+            if bytesio is not None
+        }
 
     def __repr__(self) -> str:
         return f"<EmojiCDNSource style={self.style}>"

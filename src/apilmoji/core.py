@@ -96,11 +96,12 @@ async def text(
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
-    resized_emjs = {
-        emoji: _resize_emoji(bytesio, font_size)
-        for emoji, bytesio in emj_map.items()
-        if bytesio
-    }
+    resized_emjs: dict[str, PILImage] = {}
+    for emoji, bytesio in emj_map.items():
+        try:
+            resized_emjs[emoji] = _resize_emoji(bytesio, font_size)
+        except Exception:
+            continue
 
     for line in nodes_lst:
         cur_x = x
