@@ -1,6 +1,6 @@
 # Apilmoji
 
-A high-performance asynchronous emoji rendering library
+An asynchronous emoji rendering Extension for PIL
 
 [![LICENSE](https://img.shields.io/github/license/fllesser/apilmoji)](./LICENSE)
 [![pypi](https://img.shields.io/pypi/v/apilmoji.svg)](https://pypi.python.org/pypi/apilmoji)
@@ -43,28 +43,24 @@ import asyncio
 from PIL import Image, ImageFont
 from apilmoji import Apilmoji
 
+
 async def main():
-    text = '''
+    text = """
     Hello, world! 👋
-    Here are some emojis: 🎨 🌊 😎
-    Supports multi-line text! 🚀 ✨
-    '''
+    "We have standard emojis: 😂, 🚀, 🐍, 💻.",
+    "And some more: 🌟✨🔥💯.",
+    """
 
-    # Create image
-    image = Image.new('RGB', (550, 150), (255, 255, 255))
-    font = ImageFont.truetype('arial.ttf', 24)
+    # create image
+    image = Image.new("RGB", (550, 150), (255, 255, 255))
+    font = ImageFont.truetype("arial.ttf", 24)
 
-    # Render text with emojis
-    await Apilmoji.text(
-        image,
-        (10, 10),
-        text.strip(),
-        font,
-        fill=(0, 0, 0)
-    )
+    # render text with emojis
+    await Apilmoji.text(image, (10, 10), text.strip(), font, fill=(0, 0, 0))
 
-    image.save('output.png')
+    image.save("output.png")
     image.show()
+
 
 asyncio.run(main())
 ```
@@ -72,25 +68,30 @@ asyncio.run(main())
 ### Discord Emoji Support
 
 ```python
+import asyncio
+from PIL import Image, ImageFont
+from apilmoji import Apilmoji, EmojiCDNSource
+
 async def main():
-    text = '''
+    text = """
     Unicode emojis: 👋 🎨 😎
     Discord emojis: <:rooThink:123456789012345678>
-    '''
+    """
 
-    image = Image.new('RGB', (550, 100), (255, 255, 255))
-    font = ImageFont.truetype('arial.ttf', 24)
-
+    image = Image.new("RGB", (550, 100), (255, 255, 255))
+    font = ImageFont.truetype("arial.ttf", 24)
+    source = EmojiCDNSource(enable_discord=True)
     await Apilmoji.text(
         image,
-        (10, 10),
-        text.strip(),
+        (10, 40),
+        text,
         font,
         fill=(0, 0, 0),
-        support_ds_emj=True  # Enable Discord emoji support
+        support_ds_emj=True,
+        source=source,
     )
 
-    image.save('output.png')
+    image.save("output.png")
 
 asyncio.run(main())
 ```
@@ -108,121 +109,10 @@ source = EmojiCDNSource(style=EmojiStyle.APPLE)
 # Google style
 source = EmojiCDNSource(style=EmojiStyle.GOOGLE)
 
-# Twitter style
-source = EmojiCDNSource(style=EmojiStyle.TWITTER)
-
-# Facebook style
-source = EmojiCDNSource(style=EmojiStyle.FACEBOOK)
-
 await Apilmoji.text(
     image,
     (10, 10),
     "Hello 👋",
-    font,
-    source=source
-)
-```
-
-## 🔧 API Reference
-
-### `Apilmoji.text`
-
-Main text rendering method.
-
-```python
-await Apilmoji.text(
-    image: PILImage,
-    xy: tuple[int, int],
-    lines: list[str] | str,
-    font: FontT,
-    *,
-    fill: ColorT | None = None,
-    line_height: int | None = None,
-    support_ds_emj: bool = False,
-    source: EmojiCDNSource | None = None,
-) -> None
-```
-
-**Parameters:**
-
-- `image`: PIL Image object for rendering
-- `xy`: (x, y) coordinate tuple for text position
-- `lines`: Text lines to render (supports multi-line)
-- `font`: PIL Font object
-- `fill`: Text color (default: black)
-- `line_height`: Line height (default: font height)
-- `support_ds_emj`: Whether to support Discord emojis (default: False)
-- `source`: Emoji source (default: EmojiCDNSource())
-
-### `EmojiCDNSource`
-
-Default emoji source using [emojicdn.elk.sh](https://emojicdn.elk.sh/).
-
-```python
-EmojiCDNSource(
-    base_url: str = "https://emojicdn.elk.sh",
-    style: EmojiStyle = EmojiStyle.APPLE,
-    *,
-    cache_dir: Path | None = None,
-    enable_discord: bool = False,
-    max_concurrent: int = 50,
-    enable_tqdm: bool = False,
-)
-```
-
-**Parameters:**
-
-- `base_url`: CDN base URL
-- `style`: Emoji style
-- `cache_dir`: Custom cache directory (default: `~/.cache/apilmoji`)
-- `enable_discord`: Enable Discord emoji support
-- `max_concurrent`: Maximum concurrent downloads (default: 50)
-- `enable_tqdm`: Enable progress bar display
-
-## 📝 Advanced Usage
-
-### Custom Line Height and Color
-
-```python
-# Custom line height and color
-await Apilmoji.text(
-    image,
-    (10, 10),
-    "Custom styling 🎨",
-    font,
-    fill=(255, 0, 0),      # Red text
-    line_height=40,        # Custom line height
-    support_ds_emj=True
-)
-```
-
-### Enable Progress Bar
-
-```python
-from apilmoji import EmojiCDNSource
-
-# Enable progress bar display
-source = EmojiCDNSource(enable_tqdm=True)
-
-await Apilmoji.text(
-    image,
-    (10, 10),
-    "Emoji download with progress bar 📊",
-    font,
-    source=source
-)
-```
-
-### Adjust Concurrency
-
-```python
-# Adjust concurrent download count
-source = EmojiCDNSource(max_concurrent=10)  # Limit to 10 concurrent
-
-await Apilmoji.text(
-    image,
-    (10, 10),
-    "Limited concurrent downloads ⚡",
     font,
     source=source
 )
