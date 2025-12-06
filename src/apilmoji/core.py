@@ -2,13 +2,15 @@ import asyncio
 from pathlib import Path
 
 from PIL import Image, ImageDraw
+from PIL.ImageFont import ImageFont, FreeTypeFont, TransposedFont
 
 from . import helper
-from .helper import FontT, NodeType
+from .helper import NodeType
 from .source import EmojiCDNSource
 
 PILImage = Image.Image
 PILDraw = ImageDraw.ImageDraw
+FontT = ImageFont | FreeTypeFont | TransposedFont
 ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
@@ -71,7 +73,7 @@ async def text(
 
     x, y = xy
     draw = ImageDraw.Draw(image)
-    line_height = line_height or helper.get_font_height(font)
+    line_height = line_height or get_font_height(font)
     source = source or EmojiCDNSource()
 
     if isinstance(lines, str):
@@ -103,7 +105,7 @@ async def text(
     )
 
     # Render each line
-    font_size = helper.get_font_size(font)
+    font_size = get_font_size(font)
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
@@ -133,3 +135,48 @@ async def text(
                 cur_x += int(font.getlength(node.content))
 
         y += line_height
+
+
+def get_font_size(font: FontT) -> float:
+    """Get the size of a font, handling both FreeTypeFont and TransposedFont.
+
+    Parameters
+    ----------
+    font : FontT
+        The font object to get the size from
+
+    Returns
+    -------
+    float
+        The font size in points
+    """
+    match font:
+        case FreeTypeFont():
+            return font.size
+        case TransposedFont():
+            return get_font_size(font.font)
+        case ImageFont():
+            raise ValueError("Not support ImageFont")
+
+
+def get_font_height(font: FontT) -> int:
+    """Get the line height of a font.
+
+    Parameters
+    ----------
+    font : FontT
+        The font object to get the height from
+
+    Returns
+    -------
+    int
+        The line height in pixels
+    """
+    match font:
+        case FreeTypeFont():
+            ascent, descent = font.getmetrics()
+            return ascent + descent
+        case TransposedFont():
+            return get_font_height(font.font)
+        case ImageFont():
+            raise ValueError("Not support ImageFont")

@@ -2,12 +2,7 @@ import re
 from enum import Enum
 from typing import Final, NamedTuple
 
-from PIL import ImageFont
 from emoji import EMOJI_DATA
-
-# Type aliases for font and color specifications
-FontT = ImageFont.FreeTypeFont | ImageFont.TransposedFont
-
 
 # Build emoji language pack mapping English names to emoji characters
 UNICODE_EMOJI_SET: Final[set[str]] = {
@@ -107,43 +102,3 @@ def _parse_line(line: str, support_ds_emj: bool = False) -> list[Node]:
         nodes.append(Node(NodeType.TEXT, line[last_end:]))
 
     return nodes
-
-
-def get_font_size(font: FontT) -> float:
-    """Get the size of a font, handling both FreeTypeFont and TransposedFont.
-
-    Parameters
-    ----------
-    font : FontT
-        The font object to get the size from
-
-    Returns
-    -------
-    float
-        The font size in points
-    """
-    if isinstance(font, ImageFont.TransposedFont):
-        assert not isinstance(font.font, ImageFont.ImageFont), (
-            "font.font should not be an ImageFont"
-        )
-        return font.font.size
-    return font.size
-
-
-def get_font_height(font: FontT) -> int:
-    """Get the line height of a font.
-
-    Parameters
-    ----------
-    font : FontT
-        The font object to get the height from
-
-    Returns
-    -------
-    int
-        The line height in pixels
-    """
-    if isinstance(font, ImageFont.FreeTypeFont):
-        ascent, descent = font.getmetrics()
-        return ascent + descent
-    return int(get_font_size(font) * 1.2)
