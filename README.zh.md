@@ -72,20 +72,21 @@ asyncio.run(main())
 ```python
 async def main():
     text = '''
-    Unicode 表情符号：👋 🎨 😎
-    Discord 表情符号：<:rooThink:123456789012345678>
+    Unicode emojis: 👋 🎨 😎
+    Discord emojis: <:rooThink:123456789012345678>
     '''
 
     image = Image.new('RGB', (550, 100), (255, 255, 255))
     font = ImageFont.truetype('arial.ttf', 24)
-
+    source = EmojiCDNSource(enable_discord=True)
     await Apilmoji.text(
         image,
-        (10, 10),
-        text.strip(),
+        (10, 40),
+        COMPLEX_TEXT,
         font,
         fill=(0, 0, 0),
-        support_ds_emj=True  # 启用 Discord 表情符号支持
+        support_ds_emj=True,
+        source=source,
     )
 
     image.save('output.png')
