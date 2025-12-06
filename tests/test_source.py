@@ -24,7 +24,7 @@ async def test_get_discord_emoji_from_cdn(cache_dir):
     from apilmoji import EmojiCDNSource
 
     discord_emoji_id = "596576798351949847"
-    source = EmojiCDNSource(cache_dir=cache_dir)
+    source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)
 
     image = await source.get_discord_emoji(discord_emoji_id)
     assert image is not None
