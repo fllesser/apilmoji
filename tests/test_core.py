@@ -136,23 +136,21 @@ async def test_text_with_transposed_font(font_path, cache_dir):
         image.save(cache_dir / "text_with_transposed_font.png")
 
 
-@pytest.mark.asyncio
 @pytest.mark.xfail(strict=True)
-async def test_text_with_imagefont(font_path, cache_dir):
-    from PIL import Image, ImageFont
+def test_get_font_height_with_imagefont():
+    from PIL import ImageFont
 
-    from apilmoji import Apilmoji, EmojiCDNSource
+    from apilmoji import Apilmoji
 
     font = ImageFont.load_default_imagefont()
-    source = EmojiCDNSource(cache_dir=cache_dir)
-    with Image.new("RGB", (600, 300), (255, 255, 255)) as image:
-        await Apilmoji.text(
-            image,
-            (10, 40),
-            COMPLEX_TEXT,
-            font,
-            fill=(0, 0, 0),
-            support_ds_emj=True,
-            source=source,
-        )
-        image.save(cache_dir / "text_with_imagefont.png")
+    Apilmoji.get_font_height(font)
+
+
+@pytest.mark.xfail(strict=True)
+def test_get_font_size_with_imagefont():
+    from PIL import ImageFont
+
+    from apilmoji import Apilmoji
+
+    font = ImageFont.load_default_imagefont()
+    Apilmoji.get_font_size(font)
