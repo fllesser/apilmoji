@@ -14,28 +14,6 @@ FontT = ImageFont | FreeTypeFont | TransposedFont
 ColorT = int | str | tuple[int, int, int] | tuple[int, int, int, int]
 
 
-async def _aresize_emoji(
-    emoji: str, path: Path, size: float
-) -> tuple[str, PILImage | None]:
-    def resize_emoji() -> PILImage:
-        """Resize emoji to fit the font size"""
-
-        with Image.open(path).convert("RGBA") as emoji_img:
-            emoji_size = int(size) - 2
-            aspect_ratio = emoji_img.height / emoji_img.width
-            return emoji_img.resize(
-                (emoji_size, int(emoji_size * aspect_ratio)),
-                Image.Resampling.LANCZOS,
-            )
-
-    try:
-        img = await asyncio.to_thread(resize_emoji)
-        return emoji, img
-    except Exception:
-        path.unlink(True)
-        return emoji, None
-
-
 async def text(
     image: PILImage,
     xy: tuple[int, int],
@@ -138,18 +116,6 @@ async def text(
 
 
 def get_font_size(font: FontT) -> float:
-    """Get the size of a font, handling both FreeTypeFont and TransposedFont.
-
-    Parameters
-    ----------
-    font : FontT
-        The font object to get the size from
-
-    Returns
-    -------
-    float
-        The font size in points
-    """
     match font:
         case FreeTypeFont():
             return font.size
@@ -160,18 +126,6 @@ def get_font_size(font: FontT) -> float:
 
 
 def get_font_height(font: FontT) -> int:
-    """Get the line height of a font.
-
-    Parameters
-    ----------
-    font : FontT
-        The font object to get the height from
-
-    Returns
-    -------
-    int
-        The line height in pixels
-    """
     match font:
         case FreeTypeFont():
             ascent, descent = font.getmetrics()
@@ -180,3 +134,23 @@ def get_font_height(font: FontT) -> int:
             return get_font_height(font.font)
         case ImageFont():
             raise ValueError("Not support ImageFont")
+
+
+async def _aresize_emoji(
+    emoji: str, path: Path, size: float
+) -> tuple[str, PILImage | None]:
+    def resize_emoji() -> PILImage:
+        with Image.open(path).convert("RGBA") as emoji_img:
+            emoji_size = int(size) - 2
+            aspect_ratio = emoji_img.height / emoji_img.width
+            return emoji_img.resize(
+                (emoji_size, int(emoji_size * aspect_ratio)),
+                Image.Resampling.LANCZOS,
+            )
+
+    try:
+        img = await asyncio.to_thread(resize_emoji)
+        return emoji, img
+    except Exception:
+        path.unlink(True)
+        return emoji, None

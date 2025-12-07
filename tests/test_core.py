@@ -58,7 +58,7 @@ async def test_text_with_discord_emoji(font_path, cache_dir):
     from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
-    source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)
+    source = EmojiCDNSource(cache_dir=cache_dir)
     with Image.new("RGB", (600, 300), (255, 255, 255)) as image:
         await Apilmoji.text(
             image,
@@ -88,7 +88,7 @@ async def test_edge_case(font_path, cache_dir):
     from apilmoji import Apilmoji, EmojiCDNSource
 
     font = ImageFont.truetype(font_path, 24)
-    source = EmojiCDNSource(cache_dir=cache_dir, enable_discord=True)
+    source = EmojiCDNSource(cache_dir=cache_dir)
     with Image.new("RGB", (300, 200), (255, 255, 255)) as image:
         await Apilmoji.text(image, (10, 10), [""], font, fill=(0, 0, 0), source=source)
         await Apilmoji.text(

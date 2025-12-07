@@ -61,26 +61,19 @@ class EmojiCDNSource:
         style: EmojiStyle | str = EmojiStyle.APPLE,
         *,
         cache_dir: Path | None = None,
-        enable_discord: bool = False,
         enable_tqdm: bool = False,
         max_concurrent: int = 50,
     ) -> None:
-        self.base_url = base_url
-        self.style = str(style)
+        self.base_url: str = base_url
+        self.style: str = str(style)
 
-        self._max_concurrent = max_concurrent
-        self._semaphore = Semaphore(max_concurrent)
+        self._max_concurrent: int = max_concurrent
+        self._semaphore: Semaphore = Semaphore(max_concurrent)
 
         # Setup cache directories
         self._cache_dir: Path = cache_dir or (Path.home() / ".cache" / "apilmoji")
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
-
-        self._emj_dir = self._cache_dir / self.style
-        self._emj_dir.mkdir(parents=True, exist_ok=True)
-
-        self._ds_dir = self._cache_dir / "discord"
-        if enable_discord:
-            self._ds_dir.mkdir(parents=True, exist_ok=True)
+        self._emj_dir: Path = self._cache_dir / self.style
+        self._ds_dir: Path = self._cache_dir / "discord"
 
         # Setup tqdm if enabled
         self.__tqdm = None
@@ -92,7 +85,7 @@ class EmojiCDNSource:
             except ImportError:
                 pass
 
-    def _build_emoji_path(self, emoji: str, is_discord: bool = False) -> Path:
+    def _get_emoji_path(self, emoji: str, is_discord: bool = False) -> Path:
         """获取表情路径"""
         return (self._ds_dir if is_discord else self._emj_dir) / f"{emoji}.png"
 
@@ -110,6 +103,8 @@ class EmojiCDNSource:
         else:
             file_path = self._emj_dir / f"{emoji}.png"
             url = f"{self.base_url}/{emoji}?style={self.style}"
+
+        file_path.parent.mkdir(parents=True, exist_ok=True)
 
         async def download_with_stream(_client: AsyncClient) -> Path | None:
             try:
@@ -141,7 +136,7 @@ class EmojiCDNSource:
         Returns:
             BytesIO containing the emoji image, or None if download fails
         """
-        path = self._build_emoji_path(emoji)
+        path = self._get_emoji_path(emoji)
         return path if path.exists() else await self._download_emoji(emoji)
 
     async def get_discord_emoji(self, id: str) -> Path | None:
@@ -153,7 +148,7 @@ class EmojiCDNSource:
         Returns:
             BytesIO containing the emoji image, or None if download fails
         """
-        path = self._build_emoji_path(id, True)
+        path = self._get_emoji_path(id, True)
         return path if path.exists() else await self._download_emoji(id, True)
 
     async def _fetch_with_semaphore(
@@ -205,14 +200,14 @@ class EmojiCDNSource:
         discord_emoji_list: list[str] = []
 
         for emoji in emojis:
-            path = self._build_emoji_path(emoji)
+            path = self._get_emoji_path(emoji)
             if path.exists():
                 emoji_map[emoji] = path
             else:
                 emoji_list.append(emoji)
 
         for eid in discord_emojis:
-            path = self._build_emoji_path(eid, True)
+            path = self._get_emoji_path(eid, True)
             if path.exists():
                 emoji_map[eid] = path
             else:
