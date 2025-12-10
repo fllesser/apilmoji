@@ -2,7 +2,7 @@ import re
 from enum import Enum
 from typing import Final, NamedTuple
 
-from emoji import EMOJI_DATA
+from emoji import EMOJI_DATA, emoji_list
 
 # Build emoji language pack mapping English names to emoji characters
 UNICODE_EMOJI_SET: Final[set[str]] = {
@@ -47,17 +47,12 @@ def parse_lines(lines: list[str], support_ds_emj: bool = False) -> list[list[Nod
 
 def _parse_line(line: str, support_ds_emj: bool = False) -> list[Node]:
     """Parse a line of text, identifying Unicode emojis and Discord emojis."""
-    nodes: list[Node] = []
 
     # find unicode emojis
     if not support_ds_emj:
-        for char in line:
-            if char in UNICODE_EMOJI_SET:
-                nodes.append(Node(NodeType.EMOJI, char))
-            else:
-                nodes.append(Node(NodeType.TEXT, char))
-        return nodes
+        return _parse_line_unicode_only(line)
 
+    nodes: list[Node] = []
     last_end = 0
     for matched in ALL_EMOJI_PATTERN.finditer(line):
         start, end = matched.span()
@@ -76,5 +71,44 @@ def _parse_line(line: str, support_ds_emj: bool = False) -> list[Node]:
     # Add remaining text after the last emoji
     if last_end < len(line):
         nodes.append(Node(NodeType.TEXT, line[last_end:]))
+
+    return nodes
+
+
+def _parse_line_unicode_only(line: str):
+    """Parse a line of text, identifying Unicode emojis including sequences."""
+    nodes: list[Node] = []
+
+    # Use emoji_list to get proper emoji sequences
+    emoji_positions = emoji_list(line)
+
+    if not emoji_positions:
+        # If no emojis found, treat entire line as text
+        nodes.append(Node(NodeType.TEXT, line))
+        return nodes
+
+    # Track current position in the line
+    current_pos = 0
+
+    for emoji_info in emoji_positions:
+        emoji_start = emoji_info["match_start"]
+        emoji_end = emoji_info["match_end"]
+        emoji_char = emoji_info["emoji"]
+
+        # Add text before the emoji (if any)
+        if emoji_start > current_pos:
+            text_before = line[current_pos:emoji_start]
+            nodes.append(Node(NodeType.TEXT, text_before))
+
+        # Add the emoji
+        nodes.append(Node(NodeType.EMOJI, emoji_char))
+
+        # Update current position
+        current_pos = emoji_end
+
+    # Add remaining text after the last emoji (if any)
+    if current_pos < len(line):
+        text_after = line[current_pos:]
+        nodes.append(Node(NodeType.TEXT, text_after))
 
     return nodes
