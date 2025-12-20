@@ -133,7 +133,7 @@ async def text_with_discord(
     source: EmojiCDNSource | None
         The emoji source to use, defaults to EmojiCDNSource()
     """
-    from . import regex
+    from . import ds
 
     if not lines:
         return
@@ -147,14 +147,14 @@ async def text_with_discord(
         lines = lines.splitlines()
 
     # Check if lines has emoji
-    if not regex.contains_any_emoji(lines):
+    if not ds.contains_emoji(lines):
         for line in lines:
             draw.text((x, y), line, font=font, fill=fill)
             y += line_height
         return
 
     # Parse lines into nodes
-    nodes_lst = regex.parse_all_emoji_lines(lines)
+    nodes_lst = ds.parse_lines(lines)
 
     emj_set: set[str] = set()
     ds_emj_set: set[str] = set()

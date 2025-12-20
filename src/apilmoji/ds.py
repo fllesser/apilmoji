@@ -1,7 +1,8 @@
 import re
 from typing import Final
 
-from .helper import UNICODE_EMOJI_SET, Node, NodeType, _parse_line
+from .helper import UNICODE_EMOJI_SET, Node, NodeType
+from .helper import contains_emoji as contains_unicode_emoji
 
 # Regex patterns for matching emojis
 _UNICODE_EMOJI_REGEX: Final[str] = "|".join(
@@ -14,36 +15,22 @@ ALL_EMOJI_PATTERN: Final[re.Pattern[str]] = re.compile(
 )
 
 
-def contains_unicode_emoji(lines: list[str]) -> bool:
-    """Check if a string contains any Unicode emoji characters"""
-    for line in lines:
-        for char in line:
-            if char in UNICODE_EMOJI_SET:
-                return True
-    return False
-
-
 def contains_discord_emoji(lines: list[str]) -> bool:
     """Check if a string contains any Discord emoji"""
     return bool(DISCORD_EMOJI_PATTERN.search("\n".join(lines)))
 
 
-def contains_any_emoji(lines: list[str]) -> bool:
+def contains_emoji(lines: list[str]) -> bool:
     """Check if a string contains any emoji (Unicode or Discord)"""
     return contains_unicode_emoji(lines) or contains_discord_emoji(lines)
 
 
-def parse_unicode_lines(lines: list[str]) -> list[list[Node]]:
-    """Parse lines containing only Unicode emojis"""
+def parse_lines(lines: list[str]) -> list[list[Node]]:
+    """Parse lines containing both Unicode and Discord emojis"""
     return [_parse_line(line) for line in lines]
 
 
-def parse_all_emoji_lines(lines: list[str]) -> list[list[Node]]:
-    """Parse lines containing both Unicode and Discord emojis"""
-    return [_parse_line_all(line) for line in lines]
-
-
-def _parse_line_all(line: str) -> list[Node]:
+def _parse_line(line: str) -> list[Node]:
     """Parse a line of text, identifying Unicode emojis and Discord emojis."""
     nodes: list[Node] = []
     last_end = 0
