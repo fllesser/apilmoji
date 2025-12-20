@@ -29,10 +29,10 @@ def test_parse_line_contains_combo_emoji():
 
 
 def test_parse_line_contains_ds_emoji():
-    from apilmoji.helper import Node, NodeType, _parse_line
+    from apilmoji.regex import Node, NodeType, _parse_line_all
 
     line = "👍🏻|👍🏼|👍🏽|<:rooThink:596576798351949847>|👍🏾|👍🏿"
-    nodes = _parse_line(line, True)
+    nodes = _parse_line_all(line)
     assert nodes == [
         Node(NodeType.EMOJI, "👍🏻"),
         Node(NodeType.TEXT, "|"),

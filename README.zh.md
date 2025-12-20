@@ -78,14 +78,13 @@ async def main():
 
     image = Image.new("RGB", (550, 100), (255, 255, 255))
     font = ImageFont.truetype("arial.ttf", 24)
-    source = EmojiCDNSource(enable_discord=True)
-    await Apilmoji.text(
+    source = EmojiCDNSource()
+    await Apilmoji.text_with_discord(
         image,
         (10, 40),
         text,
         font,
         fill=(0, 0, 0),
-        support_ds_emj=True,
         source=source,
     )
 
