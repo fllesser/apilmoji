@@ -133,7 +133,7 @@ async def test_text_with_transposed_font(font_path, cache_dir):
         image.save(cache_dir / "text_with_transposed_font.png")
 
 
-@pytest.xfail(reason="Font height is not available for default imagefont")
+@pytest.mark.xfail(reason="Font height is not available for default imagefont")
 def test_get_font_height_with_imagefont():
     from PIL import ImageFont
 
@@ -143,7 +143,7 @@ def test_get_font_height_with_imagefont():
     Apilmoji.get_font_height(font)
 
 
-@pytest.xfail(reason="Font size is not available for default imagefont")
+@pytest.mark.xfail(reason="Font size is not available for default imagefont")
 def test_get_font_size_with_imagefont():
     from PIL import ImageFont
 
