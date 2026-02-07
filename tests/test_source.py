@@ -87,13 +87,14 @@ async def test_all_styles(cache_dir):
 
 
 @pytest.mark.asyncio
-async def test_tqdm(cache_dir):
+async def test_progress(cache_dir):
     from apilmoji import EmojiCDNSource
 
-    emoji_str = "👍 😎 😊 😍 😘 😗 😙 😚 😋"
+    emoji_str = "👍 😎 😊 😍 😘 😗 😙 😙 😋"
     emoji_list = emoji_str.split(" ")
 
-    source = EmojiCDNSource(cache_dir=cache_dir, enable_tqdm=True)
+    # Test progress bar
+    source = EmojiCDNSource(cache_dir=cache_dir, show_progress=True)
     await source.fetch_emojis(set(emoji_list))
 
 
@@ -105,7 +106,7 @@ async def test_fetch_emojis(cache_dir):
     discord_emoji_set = {"596576798351949847"}
 
     count = len(emoji_set) + len(discord_emoji_set)
-    source = EmojiCDNSource(cache_dir=cache_dir, enable_tqdm=True)
+    source = EmojiCDNSource(cache_dir=cache_dir, show_progress=True)
     first_result = await source.fetch_emojis(emoji_set, discord_emoji_set)
     assert len(first_result) == count
     second_result = await source.fetch_emojis(emoji_set, discord_emoji_set)

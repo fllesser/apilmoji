@@ -78,7 +78,7 @@ async def test_many_emoji(font_path, cache_dir):
 
     font = ImageFont.truetype(font_path, 24)
     source = EmojiCDNSource(
-        cache_dir=cache_dir, style=EmojiStyle.FACEBOOK, enable_tqdm=True
+        cache_dir=cache_dir, style=EmojiStyle.FACEBOOK, show_progress=True
     )
     with Image.new("RGB", (1050, 2100), (255, 248, 220)) as image:  # 纸黄背景
         await Apilmoji.text(
