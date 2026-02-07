@@ -61,7 +61,7 @@ class EmojiCDNSource:
         style: EmojiStyle | str = EmojiStyle.APPLE,
         *,
         cache_dir: Path | None = None,
-        enable_tqdm: bool = False,
+        show_progress: bool = False,
         max_concurrent: int = 50,
     ) -> None:
         self.base_url: str = base_url
@@ -74,16 +74,7 @@ class EmojiCDNSource:
         self._cache_dir: Path = cache_dir or (Path.home() / ".cache" / "apilmoji")
         self._emj_dir: Path = self._cache_dir / self.style
         self._ds_dir: Path = self._cache_dir / "discord"
-
-        # Setup tqdm if enabled
-        self.__tqdm = None
-        if enable_tqdm:
-            try:
-                from tqdm.asyncio import tqdm
-
-                self.__tqdm = tqdm
-            except ImportError:
-                pass
+        self.show_progress = show_progress
 
     def _get_emoji_path(self, emoji: str, is_discord: bool = False) -> Path:
         """获取表情路径"""
@@ -168,16 +159,41 @@ class EmojiCDNSource:
     async def __gather_emojis(
         self, *tasks: Awaitable[Path | None]
     ) -> list[Path | None]:
-        """Gather emoji download tasks with optional tqdm progress bar."""
-        if self.__tqdm is None:
+        """Gather emoji download tasks with optional rich progress bar."""
+        if not self.show_progress:
             return await gather(*tasks)
 
-        return await self.__tqdm.gather(
-            *tasks,
-            desc="Fetching Emojis",
-            colour="green",
-            dynamic_ncols=True,
+        completed_count = 0
+        total_count = len(tasks)
+
+        async def track_task(
+            task: Awaitable[Path | None], progress, task_id
+        ) -> Path | None:
+            nonlocal completed_count
+            result = await task
+            progress.update(task_id, advance=1)
+            return result
+
+        from rich.progress import (
+            Progress,
+            BarColumn,
+            TextColumn,
+            TimeRemainingColumn,
         )
+
+        with Progress(
+            TextColumn("[bold blue]{task.description}", justify="right"),
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>3.1f}%",
+            "•",
+            TextColumn("{task.completed}/{task.total}"),
+            "•",
+            TimeRemainingColumn(),
+        ) as progress:
+            task_id = progress.add_task("Fetching Emojis", total=total_count)
+            # Wrap all tasks to update progress
+            tracked_tasks = [track_task(t, progress, task_id) for t in tasks]
+            return await gather(*tracked_tasks)
 
     async def fetch_emojis(
         self,
