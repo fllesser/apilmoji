@@ -1,4 +1,3 @@
-import asyncio
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -77,13 +76,11 @@ async def text(
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
-    resize_tasks = [
-        _aresize_emoji(emoji, path, font_size)
+    resized_emj_map = dict(
+        _resize_emoji(emoji, path, font_size)
         for emoji, path in emj_map.items()
         if path is not None
-    ]
-    resize_results = await asyncio.gather(*resize_tasks)
-    resized_emj_map = dict(resize_results)
+    )
 
     for line in nodes_lst:
         cur_x = x
@@ -176,13 +173,11 @@ async def text_with_discord(
     y_diff = int((line_height - font_size) / 2)
 
     # Pre-resize emojis
-    resize_tasks = [
-        _aresize_emoji(emoji, path, font_size)
+    resized_emj_map = dict(
+        _resize_emoji(emoji, path, font_size)
         for emoji, path in emj_map.items()
         if path is not None
-    ]
-    resize_results = await asyncio.gather(*resize_tasks)
-    resized_emj_map = dict(resize_results)
+    )
 
     for line in nodes_lst:
         cur_x = x
@@ -223,21 +218,15 @@ def get_font_height(font: FontT) -> int:
             raise ValueError("Not support ImageFont")
 
 
-async def _aresize_emoji(
-    emoji: str, path: Path, size: float
-) -> tuple[str, PILImage | None]:
-    def resize_emoji() -> PILImage:
+def _resize_emoji(emoji: str, path: Path, size: float) -> tuple[str, PILImage | None]:
+    try:
         with Image.open(path).convert("RGBA") as emoji_img:
             emoji_size = int(size) - 2
             aspect_ratio = emoji_img.height / emoji_img.width
-            return emoji_img.resize(
+            return emoji, emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
                 Image.Resampling.LANCZOS,
             )
-
-    try:
-        img = await asyncio.to_thread(resize_emoji)
-        return emoji, img
     except Exception:
         path.unlink(True)
         return emoji, None
