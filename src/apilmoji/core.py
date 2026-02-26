@@ -1,4 +1,5 @@
 from pathlib import Path
+from functools import partial
 
 from PIL import Image, ImageDraw
 from PIL.ImageFont import ImageFont, FreeTypeFont, TransposedFont
@@ -68,19 +69,16 @@ async def text(
             if node.type is NodeType.EMOJI:
                 emj_set.add(node.content)
 
-    # Download all emojis concurrently using source
-    emj_map = await source.fetch_emojis(emj_set, set())
+    # Download all emojis and resize concurrently
+    font_size = get_font_size(font)
+    emj_map = await source.fetch_emojis(
+        emj_set,
+        set(),
+        post_process=partial(_resize_emoji, size=font_size),
+    )
 
     # Render each line
-    font_size = get_font_size(font)
     y_diff = int((line_height - font_size) / 2)
-
-    # Pre-resize emojis
-    resized_emj_map = dict(
-        _resize_emoji(emoji, path, font_size)
-        for emoji, path in emj_map.items()
-        if path is not None
-    )
 
     for line in nodes_lst:
         cur_x = x
@@ -88,7 +86,7 @@ async def text(
         for node in line:
             content = node.content
             if node.type is NodeType.EMOJI:
-                if emj_img := resized_emj_map.get(content):
+                if emj_img := emj_map.get(content):
                     image.paste(emj_img, (cur_x + 1, y + y_diff), emj_img)
                 else:
                     # 忽略组合表情的修饰符，只渲染第一个字符
@@ -162,22 +160,16 @@ async def text_with_discord(
             elif node.type is NodeType.DSEMOJI:
                 ds_emj_set.add(node.content)
 
-    # Download all emojis concurrently using source
+    # Download all emojis and resize concurrently
+    font_size = get_font_size(font)
     emj_map = await source.fetch_emojis(
         emj_set,
         ds_emj_set,
+        post_process=partial(_resize_emoji, size=font_size),
     )
 
     # Render each line
-    font_size = get_font_size(font)
     y_diff = int((line_height - font_size) / 2)
-
-    # Pre-resize emojis
-    resized_emj_map = dict(
-        _resize_emoji(emoji, path, font_size)
-        for emoji, path in emj_map.items()
-        if path is not None
-    )
 
     for line in nodes_lst:
         cur_x = x
@@ -185,7 +177,7 @@ async def text_with_discord(
         for node in line:
             content = node.content
             if node.type is NodeType.EMOJI or node.type is NodeType.DSEMOJI:
-                if emj_img := resized_emj_map.get(content):
+                if emj_img := emj_map.get(content):
                     image.paste(emj_img, (cur_x + 1, y + y_diff), emj_img)
                 else:
                     # 忽略组合表情的修饰符，只渲染第一个字符
@@ -218,15 +210,15 @@ def get_font_height(font: FontT) -> int:
             raise ValueError("Not support ImageFont")
 
 
-def _resize_emoji(emoji: str, path: Path, size: float) -> tuple[str, PILImage | None]:
+def _resize_emoji(path: Path, *, size: float) -> PILImage | None:
     try:
         with Image.open(path).convert("RGBA") as emoji_img:
             emoji_size = int(size) - 2
             aspect_ratio = emoji_img.height / emoji_img.width
-            return emoji, emoji_img.resize(
+            return emoji_img.resize(
                 (emoji_size, int(emoji_size * aspect_ratio)),
                 Image.Resampling.LANCZOS,
             )
     except Exception:
         path.unlink(True)
-        return emoji, None
+        return None
