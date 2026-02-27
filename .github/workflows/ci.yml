@@ -20,7 +20,7 @@ jobs:
       - uses: crate-ci/typos@master
 
   test:
-    name: Coverage
+    name: Test
     # runs-on: ${{ matrix.os }}
     runs-on: ubuntu-latest
     permissions:
