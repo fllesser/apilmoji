@@ -50,11 +50,11 @@ async def main():
     """
 
     # create image
-    image = Image.new("RGB", (550, 150), (255, 255, 255))
+    image = Image.new("RGB", (500, 300), (255, 255, 255))
     font = ImageFont.truetype("arial.ttf", 24)
 
     # render text with emojis
-    await Apilmoji.text(image, (10, 10), text.strip(), font, fill=(0, 0, 0))
+    await Apilmoji.text(image, (10, 10), text, font, fill=(0, 0, 0))
 
     image.save("output.png")
     image.show()
@@ -76,16 +76,14 @@ async def main():
     Discord emojis: <:rooThink:123456789012345678>
     """
 
-    image = Image.new("RGB", (550, 100), (255, 255, 255))
+    image = Image.new("RGB", (500, 300), (255, 255, 255))
     font = ImageFont.truetype("arial.ttf", 24)
-    source = EmojiCDNSource()
     await Apilmoji.text_with_discord(
         image,
-        (10, 40),
+        (10, 10),
         text,
         font,
-        fill=(0, 0, 0),
-        source=source,
+        fill=(0, 0, 0)
     )
 
     image.save("output.png")

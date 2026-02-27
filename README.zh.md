@@ -45,16 +45,16 @@ from apilmoji import Apilmoji
 async def main():
     text = """
     Hello, world! 👋
-    这里有一些表情符号：🎨 🌊 😎
-    支持多行文本！🚀 ✨
+    "We have standard emojis: 😂, 🚀, 🐍, 💻.",
+    "And some more: 🌟✨🔥💯.",
     """
 
-    # 创建图像
-    image = Image.new("RGB", (550, 150), (255, 255, 255))
+    # create image
+    image = Image.new("RGB", (500, 300), (255, 255, 255))
     font = ImageFont.truetype("arial.ttf", 24)
 
-    # 渲染带表情符号的文本
-    await Apilmoji.text(image, (10, 10), text.strip(), font, fill=(0, 0, 0))
+    # render text with emojis
+    await Apilmoji.text(image, (10, 10), text, font, fill=(0, 0, 0))
 
     image.save("output.png")
     image.show()
@@ -76,16 +76,14 @@ async def main():
     Discord emojis: <:rooThink:123456789012345678>
     """
 
-    image = Image.new("RGB", (550, 100), (255, 255, 255))
+    image = Image.new("RGB", (500, 300), (255, 255, 255))
     font = ImageFont.truetype("arial.ttf", 24)
-    source = EmojiCDNSource()
     await Apilmoji.text_with_discord(
         image,
-        (10, 40),
+        (10, 10),
         text,
         font,
-        fill=(0, 0, 0),
-        source=source,
+        fill=(0, 0, 0)
     )
 
     image.save("output.png")
