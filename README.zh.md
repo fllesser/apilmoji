@@ -38,6 +38,7 @@ uv add git+https://github.com/fllesser/apilmoji
 
 ```python
 import asyncio
+
 from PIL import Image, ImageFont
 from apilmoji import Apilmoji
 
@@ -45,50 +46,40 @@ from apilmoji import Apilmoji
 async def main():
     text = """
     Hello, world! 👋
-    "We have standard emojis: 😂, 🚀, 🐍, 💻.",
-    "And some more: 🌟✨🔥💯.",
+    "We have standard emojis: 😂, 🚀, 🐍, 💻."
+    "And some more: 🌟✨🔥💯."
     """
-
-    # create image
-    image = Image.new("RGB", (500, 300), (255, 255, 255))
-    font = ImageFont.truetype("arial.ttf", 24)
-
-    # render text with emojis
-    await Apilmoji.text(image, (10, 10), text, font, fill=(0, 0, 0))
-
-    image.save("output.png")
-    image.show()
+    font = ImageFont.truetype("LXGWWenKai-Regular.ttf", 24)
+    with Image.new("RGB", (600, 200), (255, 255, 255)) as image:
+        await Apilmoji.text(image, (10, 10), text, font=font, fill=(0, 0, 0))
+        image.show()
 
 
 asyncio.run(main())
-```
 
+```
 ### 支持 Discord 表情符号
 
 ```python
 import asyncio
+
 from PIL import Image, ImageFont
-from apilmoji import Apilmoji, EmojiCDNSource
+from apilmoji import Apilmoji
+
 
 async def main():
     text = """
     Unicode emojis: 👋 🎨 😎
-    Discord emojis: <:rooThink:123456789012345678>
+    Discord emojis: <:rooThink:596576798351949847>
     """
+    font = ImageFont.truetype("LXGWWenKai-Regular.ttf", 24)
+    with Image.new("RGB", (600, 200), (255, 255, 255)) as image:
+        await Apilmoji.text_with_discord(image, (10, 10), text, font, fill=(0, 0, 0))
+        image.show()
 
-    image = Image.new("RGB", (500, 300), (255, 255, 255))
-    font = ImageFont.truetype("arial.ttf", 24)
-    await Apilmoji.text_with_discord(
-        image,
-        (10, 10),
-        text,
-        font,
-        fill=(0, 0, 0)
-    )
-
-    image.save("output.png")
 
 asyncio.run(main())
+
 ```
 
 ## 🎨 表情符号样式
