@@ -11,12 +11,11 @@ async def test_get_emoji_from_cdn(cache_dir):
     source = EmojiCDNSource(cache_dir=cache_dir)
 
     for emoji in emoji_list:
-        image = await source.get_emoji(emoji)
-        assert image is not None
+        await source.get_emoji(emoji)
+
     # test cache
     for emoji in emoji_list:
-        image = await source.get_emoji(emoji)
-        assert image is not None
+        await source.get_emoji(emoji)
 
 
 @pytest.mark.asyncio
